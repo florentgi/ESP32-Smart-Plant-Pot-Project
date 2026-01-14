@@ -1,4 +1,4 @@
-# 🚀 ESP32 Smart Plant Pot Project
+# 🪴 ESP32 Smart Plant Pot Project
 
 ## 📝 Project Overview
 This project transforms a standard plant pot into a smart, interactive IoT device. Built using Object-Oriented C++ on the ESP32 platform, the system monitors critical environmental data to ensure optimal plant health.
