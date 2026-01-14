@@ -12,16 +12,18 @@ Instead of raw data streams, the device uses a State Machine to display the plan
 
 ## 🛠 Hardware Requirements
 * **Microcontroller:** AZ Delivery ESP32-WROOM-32
-* **Sensors:** Capacitive soil moisture sensor v2.0 (Soil Moisture), Velleman VMA 303 Water Sensor (water level in internal water reservoir), Light dection Module v2.0 (light exposure), Freenove pH meter v1.1 (soil pH)
+* **Sensors:**
+  * Capacitive soil moisture sensor v2.0 (Soil Moisture)
+  * Velleman VMA 303 Water Sensor (water level in internal water reservoir)
+  * Light dection Module v2.0 (light exposure)
+  * Freenove pH meter v1.1 (soil pH)
 * **Actuators:** 
 * **Other:** 
 
 ## 🔌 Wiring Diagram (Pinout)
 | Component | ESP32 Pin | Type |
 | :--- | :--- | :--- |
-| DHT11 Data | GPIO 4 | Digital Input |
-| Relay Signal | GPIO 18 | Digital Output |
-| Soil Sensor | GPIO 34 | Analog Input |
+| Light Sensor (AO) | GPIO 34 | Analog Input |
 
 ## 💻 Software Setup
 1. **Board Manager:** Install ESP32 by Espressif Systems in Arduino IDE.
