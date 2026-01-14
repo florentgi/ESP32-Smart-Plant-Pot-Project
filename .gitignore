@@ -1,0 +1,18 @@
+# Ignore temporary build files (Arduino 1.8.19 uses system temp, 
+# but this covers you if you move files around)
+*.elf
+*.bin
+*.hex
+*.o
+*.d
+
+# Ignore local IDE settings
+.vscode/
+.history/
+
+# Ignore Mac/Windows system files
+.DS_Store
+Thumbs.db
+
+# Ignore your private WiFi credentials (explained in Step 5)
+secrets.h
