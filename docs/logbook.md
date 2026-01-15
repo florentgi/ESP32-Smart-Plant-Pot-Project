@@ -10,5 +10,6 @@
 * **Julien Mignon**: Searching for IoT project ideas
 * **Léon**: Learning the basics of Arduino and ESP32 with different sensors
 
-* **Decision**: We decided to create a Smart Plant Pot for our IoT project, Project which has been validated by Heikki. We also got the material for it.
+**Decision**: We decided to create a Smart Plant Pot for our IoT project, Project which has been validated by Heikki. We also got the material for it.
+
 
