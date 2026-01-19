@@ -1,8 +1,13 @@
 #include <Arduino.h>
+#include <LiquidCrystal_I2C.h>
 
 // --- Hardware Settings ---
 #define PIN_LIGHT 34        // Analog pin for Light Sensor
 const float TEMP_OFFSET = -15.0; // Calibration: Internal CPU is hotter than air
+
+// --- LCD Display ---
+// Set address to 0x27. Columns = 20, Rows = 4
+LiquidCrystal_I2C lcd(0x27, 20, 4);
 
 // --- Configuration & Constants ---
 // Define the possible states for our Tamagotchi interface
@@ -92,6 +97,29 @@ public:
         Serial.printf("Temperature:   %.1f C\n", data.temperature);
         Serial.println("---------------------------");
     }
+
+    void updateDisplay() {
+        // ROW 0: Title & Mood
+        // Format: "STATUS: Happy (^_^)"
+        lcd.setCursor(0, 0);
+        lcd.print("STATUS: " + getEmoji()); 
+    
+        // ROW 1: The "Fluids" (Soil & Reservoir)
+        lcd.setCursor(0, 1);
+        // Format: "Soil: 45%   H2O: 80%"
+        // %3.0f means "print float with 0 decimals, taking up 3 spaces"
+        lcd.printf("Soil: %3.0f%%  H2O: %3.0f%%", data.soilMoisture, data.waterLevel);
+    
+        // ROW 2: The "Environment" (Light & pH)
+        lcd.setCursor(0, 2);
+        // Format: "Sun:  80%   pH:  6.5"
+        lcd.printf("Sun:  %3.0f%%  pH: %4.1f", data.lightLevel, data.pH);
+    
+        // ROW 3: System Stats
+        lcd.setCursor(0, 3);
+        // Format: "Temp: 24C   WiFi: --"
+        lcd.printf("Temp: %2.0fC   WiFi: OFF", data.temperature);
+    }
 };
 
 // --- Global Objects ---
@@ -120,12 +148,30 @@ float getLightPercentage() {
 }
 
 void setup() {
-    Serial.begin(115200);
-    analogReadResolution(12); // Force 0-4095 range
-    pinMode(PIN_LIGHT, INPUT);
+    //Serial.begin(115200);
+    //analogReadResolution(12); // Force 0-4095 range
+    //pinMode(PIN_LIGHT, INPUT);
     
-    delay(1000); 
-    Serial.println("Smart Pot System: Phase 2.3 (Light & Temp)");
+    //delay(1000); 
+    //Serial.println("Smart Pot System: Phase 2.3 (Light & Temp)");
+
+
+    Serial.begin(115200);
+    
+    // LCD Initialization
+    lcd.init();      // Initialize the I2C LCD module
+    lcd.backlight(); // Turn on the backlight
+    
+    // Boot Screen
+    lcd.setCursor(2, 0); // Column 2, Row 0
+    lcd.print("Smart Pot System");
+    lcd.setCursor(4, 1); 
+    lcd.print("Initializing...");
+    delay(2000);
+    lcd.clear();
+    
+    // ... existing pin setups ...
+    pinMode(PIN_LIGHT, INPUT);
 }
 
 void loop() {
@@ -142,6 +188,7 @@ void loop() {
     myPlant.updateSensors(mockMoisture, mockWater, realLight, mockPH, realTemp);
     
     myPlant.printStatus();
+    myPlant.updateDisplay();
     
     // Debug specific to this phase (helps you calibrate)
     Serial.print("DEBUG -> Raw Light Pin (0-4095): ");
