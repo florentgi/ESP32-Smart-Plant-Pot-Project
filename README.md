@@ -8,7 +8,7 @@ Instead of raw data streams, the device uses a State Machine to display the plan
 ## 👥 Team Members
 * **Florent Gilliéron** (@florentgi)
 * **Julien Mignon**
-* **Léon**
+* **Léon Ehrwein**
 
 ## 🛠 Hardware Requirements
 * **Microcontroller:** AZ Delivery ESP32-WROOM-32
