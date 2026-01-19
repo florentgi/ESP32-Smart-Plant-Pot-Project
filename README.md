@@ -21,9 +21,9 @@ Instead of raw data streams, the device uses a State Machine to display the plan
 * **Other:** 
 
 ## 🔌 Wiring Diagram (Pinout)
-| Component | ESP32 Pin | Type |
-| :--- | :--- | :--- |
-| Light Sensor (AO) | GPIO 34 | Analog Input |
+| Component | ESP32 Pin | Type | Power |
+| :--- | :--- | :--- | :--- |
+| Light Sensor (AO) | GPIO 34 | Analog Input | 3V3 |
 
 ## 💻 Software Setup
 1. **Board Manager:** Install ESP32 by Espressif Systems in Arduino IDE.
