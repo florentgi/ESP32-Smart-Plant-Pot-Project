@@ -38,6 +38,6 @@ Instead of raw data streams, the device uses a State Machine to display the plan
 
 ## 🚀 How to Run
 1. Clone the repo.
-2. Open `src/ProjectName/ProjectName.ino`.
+2. Open `smart_plant_pot/smart_plant_pot.ino`.
 3. Select **DOIT ESP32 DEVKIT V1** in the board menu.
 4. Click **Upload**.
