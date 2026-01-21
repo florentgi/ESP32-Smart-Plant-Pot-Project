@@ -18,12 +18,13 @@
 * **Julien Mignon**: worked on the LCD screen and temperature/CO2 sensor.
 * **Léon Ehrwein**: Joined the group and start to help the two others students after learning the basics of Arduino and ESP32. Worked on the LCD screen and temperature/CO2 sensor.
 
-* **Results**: We worked on wiring a large LCD screen to the ESP32. We had to use a bread board so we had enough grounds and power pins, plus we could have our light sensor plugged in too. We managed to get the screen to display all the data. We had to adapt our code in order to make this work. So far, we have real data only for the light and have mockup data for the moisture/water/PH level. We also worked on setting up a temperature/CO2 sensor. For the moment, we have some issues with it. It seems that we are having a problem with the  specific library, Sensirion. We will need to work on the layout of the information on the screen next. We are also planning to calibrate our PH sensor for the following session, so we will need to get some soil.
+* **Results**: We worked on wiring a large LCD screen to the ESP32. We had to use a bread board so we had enough grounds and power pins, plus we could have our light sensor plugged in too. We managed to get the screen to display all the data. We had to adapt our code in order to make this work. So far, we have real data only for the light and have mockup data for the moisture/water/PH level. We also worked on setting up a temperature/CO2 sensor. For the moment, we have some issues with it. It seems that we are having a problem with the  specific library, Sensirion. We will need to work on the layout of the information on the screen next. We are also planning to calibrate our sensors for the following session, so we will need to get some soil.
 
 ## 🗓️ Wednesday, 21st of January 2026
 
-* **Florent Gilliéron**: Working on fixing some code issues related to the temperature/CO2 sensor.
-* **Julien Mignon**: Updated the daily log
-* **Léon Ehrwein**: Updated the README document
+* **Florent Gilliéron**: Working on fixing some code issues related to the temperature/CO2 sensor. Worked on moisture sensor calibration.
+* **Julien Mignon**: Updated the daily log. Worked on the wiring of the moisture sensor and its calibration
+* **Léon Ehrwein**: Updated the README document. Worked on a diagram.
 
+* **Results**: Today, we have been very productive by fixing the issue with our temperature/CO2 sensor. We have also added and calibrated our moisture sensor. All the data was displayed succesfully on the LCD screen. For the calibration, we had to take a series of measures when the sensor was dry and submerged in water. We got a high limit when dry and a low limit when wet. We adapted our code to work this range as a percentage and this is what is displayed on our screen.
 
