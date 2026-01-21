@@ -13,6 +13,10 @@ LiquidCrystal_I2C lcd(0x27, 20, 4);
 // SCD41 Sensor Object 
 SensirionI2cScd4x scd4x;
 
+// --- SENSOR CALIBRATION ---
+const int DRY_VALUE   = 2933.33;  // Replace with your "Dry" number
+const int WATER_VALUE = 2019.28;  // Replace with your "Wet" number
+
 // --- Configuration & Constants ---
 // Define the possible states for our Tamagotchi interface
 enum PlantMood { 
@@ -161,6 +165,17 @@ float getLightPercentage() {
     return percentage;
 }
 
+float getSoilMoisture() {
+    int rawValue = analogRead(35); // Read GPIO 35
+    
+    // Map raw range to 0-100%
+    // syntax: map(value, low_input, high_input, low_output, high_output)
+    int percentage = map(rawValue, DRY_VALUE, WATER_VALUE, 0, 100);
+    
+    // Fix edge cases (if it goes slightly below 0% or above 100%)
+    return constrain(percentage, 0, 100);
+}
+
 void setup() {
     Serial.begin(115200);
     delay(1000); 
@@ -205,7 +220,7 @@ void loop() {
 
         // --- 1. REAL SENSORS ---
         float realLight = getLightPercentage();
-        float realSoil = 50.0; // TODO: Replace with actual soil sensor
+        float realSoil = getSoilMoisture();
 
         // SCD41 sensor values 
         uint16_t co2 = 400;    
