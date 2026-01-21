@@ -1,19 +1,17 @@
 #include <Arduino.h>
 #include <Wire.h>
 #include <LiquidCrystal_I2C.h>
-#include <SensirionCore.h>
-#include <SensirionI2CScd4x.h>
+#include <SensirionI2cScd4x.h>
 
 // --- Hardware Settings ---
 #define PIN_LIGHT 34        // Analog pin for Light Sensor
-const float TEMP_OFFSET = -15.0; // Calibration: Internal CPU is hotter than air
 
 // --- LCD Display ---
 // Set address to 0x27. Columns = 20, Rows = 4
 LiquidCrystal_I2C lcd(0x27, 20, 4);
 
-// SCD41 Sensor Object
-SensirionI2CScd4x scd4x;
+// SCD41 Sensor Object 
+SensirionI2cScd4x scd4x;
 
 // --- Configuration & Constants ---
 // Define the possible states for our Tamagotchi interface
@@ -33,9 +31,9 @@ struct PlantData {
     float waterLevel;     // 0 - 100% (Reservoir level)
     float lightLevel;     // 0 - 100%
     float pH;             // 0.0 - 14.0
-    float temperature;    // Celsius
-    float airHumidity;  // 0 - 100%
-    uint16_t co2;       //
+    float temperature;    // Celsius (from SCD41)
+    float airHumidity;    // 0 - 100% (from SCD41)
+    uint16_t co2;         // CO2 in ppm (from SCD41)
 };
 
 // --- SmartPot Class ---
@@ -46,22 +44,32 @@ private:
 
 public:
     // Constructor
-    SmartPot() : currentMood(HAPPY) {}
+    SmartPot() : currentMood(HAPPY) {
+        // Initialize data to safe defaults
+        data.soilMoisture = 0.0;
+        data.waterLevel = 0.0;
+        data.lightLevel = 0.0;
+        data.pH = 7.0;
+        data.temperature = 20.0;
+        data.airHumidity = 0.0;
+        data.co2 = 400;
+    }
 
-    // Method to update sensor data (In Phase 2, this will accept real sensor readings)
-    void updateSensors(float moisture, float water, float light, float ph, float temp) {
+    // Method to update sensor data with all 7 parameters
+    void updateSensors(float moisture, float water, float light, float ph, float temp, float humidity, uint16_t co2Val) {
         data.soilMoisture = moisture;
         data.waterLevel = water;
         data.lightLevel = light;
         data.pH = ph;
         data.temperature = temp;
+        data.airHumidity = humidity;
+        data.co2 = co2Val;
         
         // Recalculate mood immediately after new data arrives
         evaluateMood();
     }
 
     // The "Tamagotchi" Logic Engine
-    // Order matters here: critical alerts (Empty Tank) usually take precedence
     void evaluateMood() {
         if (data.waterLevel < 10.0) {
             currentMood = EMPTY_TANK; 
@@ -80,158 +88,149 @@ public:
         }
     }
 
-    // Returns a string representation of the emoji for the LCD (and later Web/SMS)
+    // Returns a string representation of the emoji
     String getEmoji() {
         switch (currentMood) {
-            case HAPPY:        return "( ^_^)  [Happy]";
-            case THIRSTY:      return "( >_<)  [Thirsty]";
-            case OVERWATERED:  return "( ~_~)  [Too Wet]";
-            case EMPTY_TANK:   return "( O_O)  [Refill Me]";
-            case SUNBURNT:     return "( x_x)  [Too Hot]";
-            case COLD:         return "( *_* ) [Cold]";
-            case PH_IMBALANCE: return "( ?_?)  [Bad Soil]";
-            default:           return "( o_o)  [Unknown]";
+            case HAPPY:        return "( ^_^) [Hpy]"; // Shortened text to fit buffer
+            case THIRSTY:      return "( >_<) [Dry]";
+            case OVERWATERED:  return "( ~_~) [Wet]";
+            case EMPTY_TANK:   return "( O_O) [H2O]";
+            case SUNBURNT:     return "( x_x) [Hot]";
+            case COLD:         return "(*_* ) [Cld]";
+            case PH_IMBALANCE: return "( ?_?) [Bad]";
+            default:           return "( o_o) [???]";
         }
     }
 
-    // Debugging method to see what's happening in the Serial Monitor
+    // IMPROVEMENT B: Cleaner Serial Debugging using printf (ESP32 only)
     void printStatus() {
         Serial.println("\n--- Plant Status Report ---");
-        Serial.printf("Current Mood: %s\n", getEmoji().c_str());
+        Serial.printf("Current Mood:  %s\n", getEmoji().c_str());
         Serial.printf("Soil Moisture: %.1f%%\n", data.soilMoisture);
         Serial.printf("Reservoir Lvl: %.1f%%\n", data.waterLevel);
         Serial.printf("pH Level:      %.1f\n", data.pH);
         Serial.printf("Light Level:   %.1f%%\n", data.lightLevel);
         Serial.printf("Temperature:   %.1f C\n", data.temperature);
+        Serial.printf("Air Humidity:  %.1f%%\n", data.airHumidity);
+        Serial.printf("CO2 Level:     %d ppm\n", data.co2);
         Serial.println("---------------------------");
     }
 
+    // IMPROVEMENT A: Flicker-Free Display Update
     void updateDisplay() {
-        // ROW 0: Mood & CO2 (Air Quality)
+        // We use a buffer to format the line exactly to 20 chars
+        // This overwrites old characters with spaces, so no lcd.clear() is needed
+        char buffer[21]; 
+
+        // ROW 0: Mood & CO2
+        // %-12s: Left align string, 12 chars wide
+        // %4d:   Right align integer, 4 digits wide
         lcd.setCursor(0, 0);
-        // Format: "Happy (^_^) CO2:800"
-        lcd.printf("%s CO2:%d", getEmoji().c_str(), data.co2); 
-    
+        String emoji = getEmoji();
+        snprintf(buffer, 21, "%-12s CO2:%4d", emoji.substring(0, 12).c_str(), data.co2);
+        lcd.print(buffer);
+
         // ROW 1: Soil & Water
         lcd.setCursor(0, 1);
-        lcd.printf("Soil:%3.0f%%  H2O:%3.0f%%", data.soilMoisture, data.waterLevel);
-    
-        // ROW 2: Light & Humidity (New!)
+        snprintf(buffer, 21, "Soil:%3d%%  H2O:%3d%%", (int)data.soilMoisture, (int)data.waterLevel);
+        lcd.print(buffer);
+
+        // ROW 2: Light & Humidity
         lcd.setCursor(0, 2);
-        lcd.printf("Sun: %3.0f%%  Hum:%3.0f%%", data.lightLevel, data.airHumidity);
-    
-        // ROW 3: Temperature & pH
+        snprintf(buffer, 21, "Sun :%3d%%  Hum:%3d%%", (int)data.lightLevel, (int)data.airHumidity);
+        lcd.print(buffer);
+
+        // ROW 3: Temp & pH
+        // %4.1f: Float, 4 chars total width, 1 decimal place
         lcd.setCursor(0, 3);
-        lcd.printf("Temp:%4.1fC  pH:%4.1f", data.temperature, data.pH);
+        snprintf(buffer, 21, "Temp:%4.1fC pH :%4.1f", data.temperature, data.pH);
+        lcd.print(buffer);
     }
 };
 
 // --- Global Objects ---
 SmartPot myPlant;
-
-// Reads standard I2C data from SCD41
-void readEnvironment(PlantData &data) {
-    uint16_t co2 = 0;
-    float temperature = 0.0f;
-    float humidity = 0.0f;
-    bool isDataReady = false;
-
-    // Check if data is ready (SCD41 is slow, updates every 5s)
-    uint16_t dataReadyState = 0;
-    scd4x.getDataReadyStatus(dataReadyState);
-    
-    // If the last 11 bits are not 0, data is ready
-    if ((dataReadyState & 0x07FF) != 0) {
-        // Read the actual measurement
-        uint16_t error = scd4x.readMeasurement(co2, temperature, humidity);
-        
-        if (error == 0) {
-            data.temperature = temperature;
-            data.airHumidity = humidity;
-            data.co2 = co2;
-        } else {
-            Serial.print("Error reading SCD41: ");
-            Serial.println(error);
-        }
-    }
-}
+unsigned long lastUpdate = 0;       // Timer tracker
+const long interval = 2000;         // Update interval (2 seconds)
 
 // Helper to read and convert Light to %
 float getLightPercentage() {
     int rawValue = analogRead(PIN_LIGHT);
     // ESP32 Analog is 0 (0V) to 4095 (3.3V)
-    // Most LDR modules: Low Value = Bright, High Value = Dark (Inverted)
-    // But check your specific module! If 4095 is dark for you:
     float percentage = (rawValue / 4095.0) * 100.0;
-    
-    // IF your sensor reads 0 when bright and 4095 when dark, 
-    // uncomment the line below to invert it:
-    // percentage = 100.0 - percentage; 
-    
     return percentage;
 }
 
 void setup() {
     Serial.begin(115200);
-    Wire.begin(); // Start the I2C bus
+    delay(1000); 
+    
+    Wire.begin(); 
     
     // LCD Initialization
-    lcd.init();      // Initialize the I2C LCD module
-    lcd.backlight(); // Turn on the backlight
+    lcd.init();      
+    lcd.backlight(); 
     
     // Boot Screen
-    lcd.setCursor(2, 0); // Column 2, Row 0
+    lcd.clear();
+    lcd.setCursor(2, 0); 
     lcd.print("Smart Pot System");
 
-    // 2. SCD41 Setup
-    scd4x.begin(Wire);
-    
-    // Stop any previous measurement to ensure clean start
+    // SCD41 Setup 
+    scd4x.begin(Wire, 0x62);
     scd4x.stopPeriodicMeasurement(); 
-    
-    // Start measuring (SCD41 updates every 5 seconds)
+    delay(500);
     scd4x.startPeriodicMeasurement();
     
     lcd.setCursor(4, 1); 
     lcd.print("Initializing...");
     delay(2000);
-    lcd.clear();
     
-    // ... existing pin setups ...
+    // Clear once before entering the loop to ensure clean slate
+    lcd.clear(); 
+    
+    // Pin setup
     pinMode(PIN_LIGHT, INPUT);
+    
+    Serial.println("Smart Pot System Started!");
 }
 
 void loop() {
-    // --- REAL SENSORS (Phase 2.3) ---
-    float realLight = getLightPercentage();
-    float realTemp = getInternalTemp();
+    // IMPROVEMENT C: Non-Blocking Timer Logic
+    unsigned long currentMillis = millis();
 
-    // Because SCD41 is complex, let's just create temp vars here
-    uint16_t co2 = 0;
-    float temp = 0.0;
-    float hum = 0.0;
+    // Check if 2 seconds have passed
+    if (currentMillis - lastUpdate >= interval) {
+        lastUpdate = currentMillis; // Reset timer
 
-    // Only read if SCD41 has data ready (Non-blocking)
-    uint16_t ready = 0;
-    scd4x.getDataReadyStatus(ready);
-    if ((ready & 0x07FF) != 0) {
-        scd4x.readMeasurement(co2, temp, hum);
+        // --- 1. REAL SENSORS ---
+        float realLight = getLightPercentage();
+        float realSoil = 50.0; // TODO: Replace with actual soil sensor
+
+        // SCD41 sensor values 
+        uint16_t co2 = 400;    
+        float temp = 20.0;      
+        float hum = 50.0;      
+
+        bool isDataReady = false;
+        uint16_t error = scd4x.getDataReadyStatus(isDataReady);
+        
+        if (error == 0 && isDataReady) {
+            error = scd4x.readMeasurement(co2, temp, hum);
+            if (error != 0) {
+                Serial.printf("Error reading SCD41: %d\n", error);
+            }
+        }
+
+        // --- 2. MOCK DATA (For missing sensors) ---
+        float mockWater = 80.0;  
+        float mockPH = 6.5;      
+
+        // --- 3. LOGIC UPDATE ---
+        myPlant.updateSensors(realSoil, mockWater, realLight, mockPH, temp, hum, co2);
+        
+        // --- 4. DISPLAY UPDATE ---
+        myPlant.printStatus();
+        myPlant.updateDisplay();
     }
-
-    // --- MOCK DATA (Keep these for sensors we haven't wired yet) ---
-    float mockMoisture = 50.0; 
-    float mockWater = 80.0;
-    float mockPH = 6.5;
-
-    // Send hybrid data (Real + Mock) to the Brain
-    myPlant.updateSensors(realSoil, mockWater, realLight, mockPH, temp, hum, co2);
-    
-    myPlant.printStatus();
-    myPlant.updateDisplay();
-    
-    // Debug specific to this phase (helps you calibrate)
-    Serial.print("DEBUG -> Raw Light Pin (0-4095): ");
-    Serial.println(analogRead(PIN_LIGHT)); 
-
-    delay(2000); // Faster updates for testing light
 }
