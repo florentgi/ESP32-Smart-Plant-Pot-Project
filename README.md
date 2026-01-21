@@ -23,7 +23,11 @@ Instead of raw data streams, the device uses a State Machine to display the plan
 ## 🔌 Wiring Diagram (Pinout)
 | Component | ESP32 Pin | Type | Power |
 | :--- | :--- | :--- | :--- |
-| Light Sensor (AO) | GPIO 34 | Analog Input | 3V3 |
+| **Light Sensor (AO)** | GPIO 34 | Analog Input | 3V3 |
+| **LCD Screen (SDA)** | GPIO 21 | I2C Data | 5V |
+| **LCD Screen (SCL)** | GPIO 22 | I2C Clock | - |
+| **SCD41 Sensor (SDA)** | GPIO 21 | I2C Data | 3V3 |
+| **SCD41 Sensor (SCL)** | GPIO 22 | I2C Clock | - |
 
 ## 💻 Software Setup
 1. **Board Manager:** Install ESP32 by Espressif Systems in Arduino IDE.
