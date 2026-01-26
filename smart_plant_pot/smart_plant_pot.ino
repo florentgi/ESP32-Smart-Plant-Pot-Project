@@ -5,6 +5,8 @@
 
 // --- Hardware Settings ---
 #define PIN_LIGHT 34        // Analog pin for Light Sensor
+#define PIN_WATER_SIGNAL 32 // ADC Pin to read data
+#define PIN_WATER_POWER  25 // Digital Pin to power sensor
 
 // --- LCD Display ---
 // Set address to 0x27. Columns = 20, Rows = 4
@@ -16,6 +18,9 @@ SensirionI2cScd4x scd4x;
 // --- SENSOR CALIBRATION ---
 const int DRY_VALUE   = 2933.33;  // Replace with your "Dry" number
 const int WATER_VALUE = 2019.28;  // Replace with your "Wet" number
+const int TANK_EMPTY_RAW = 0;    // Reading in air
+const int TANK_FULL_RAW  = 1421; // Reading fully submerged
+
 
 // --- Configuration & Constants ---
 // Define the possible states for our Tamagotchi interface
@@ -176,6 +181,22 @@ float getSoilMoisture() {
     return constrain(percentage, 0, 100);
 }
 
+float getWaterLevel() {
+    // 1. Power ON
+    digitalWrite(PIN_WATER_POWER, HIGH);
+    delay(10); 
+    
+    // 2. Read value
+    int raw = analogRead(PIN_WATER_SIGNAL);
+    
+    // 3. Power OFF
+    digitalWrite(PIN_WATER_POWER, LOW);
+
+    // 4. Map
+    int percent = map(raw, TANK_EMPTY_RAW, TANK_FULL_RAW, 0, 100);
+    return constrain(percent, 0, 100);
+}
+
 void setup() {
     Serial.begin(115200);
     delay(1000); 
@@ -206,6 +227,11 @@ void setup() {
     
     // Pin setup
     pinMode(PIN_LIGHT, INPUT);
+
+    // Configure Water Sensor Pins
+    pinMode(PIN_WATER_SIGNAL, INPUT);
+    pinMode(PIN_WATER_POWER, OUTPUT);
+    digitalWrite(PIN_WATER_POWER, LOW); // Keep it OFF by default!
     
     Serial.println("Smart Pot System Started!");
 }
@@ -221,6 +247,7 @@ void loop() {
         // --- 1. REAL SENSORS ---
         float realLight = getLightPercentage();
         float realSoil = getSoilMoisture();
+        float realWater = getWaterLevel();
 
         // SCD41 sensor values 
         uint16_t co2 = 400;    
@@ -242,10 +269,11 @@ void loop() {
         float mockPH = 6.5;      
 
         // --- 3. LOGIC UPDATE ---
-        myPlant.updateSensors(realSoil, mockWater, realLight, mockPH, temp, hum, co2);
+        myPlant.updateSensors(realSoil, realWater, realLight, mockPH, temp, hum, co2);
         
         // --- 4. DISPLAY UPDATE ---
         myPlant.printStatus();
         myPlant.updateDisplay();
+        
     }
 }
