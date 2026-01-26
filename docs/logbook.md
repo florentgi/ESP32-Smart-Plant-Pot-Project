@@ -28,3 +28,8 @@
 
 * **Results**: Today, we have been very productive by fixing the issue with our temperature/CO2 sensor. We have also added and calibrated our moisture sensor. All the data was displayed succesfully on the LCD screen. For the calibration, we had to take a series of measures when the sensor was dry and submerged in water. We got a high limit when dry and a low limit when wet. We adapted our code to work this range as a percentage and this is what is displayed on our screen.
 
+## 🗓️ Monday, 26th of January 2026
+
+* **Florent Gilliéron**: Working on the calibration of the water level sensor.
+* **Julien Mignon**: Updated the daily log. Working on the calibration of the water level sensor.
+* **Léon Ehrwein**: Updated the README document andd the diagram. Working on the calibration of the water level sensor.
