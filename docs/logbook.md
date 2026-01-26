@@ -6,7 +6,7 @@
 * **Léon Ehrwein**: Learning the basics of Arduino
 
 ## 🗓️ Wednesday, 14th of January 2026
-* **Florent Gilliéron**: Searching for IoT project ideas. Creation of the first code. Create of a Github Repository.
+* **Florent Gilliéron**: Searching for IoT project ideas. Creation of the first code. Creation of a Github Repository.
 * **Julien Mignon**: Searching for IoT project ideas. Creation of the first code.
 * **Léon Ehrwein**: Learning the basics of Arduino and ESP32 with different sensors
 * 
@@ -35,3 +35,4 @@
 * **Léon Ehrwein**: Updated the README document andd the diagram. Working on the calibration of the water level sensor.
 
 * **Results**: After doing some research on resistive sensors, we found out that they suffer from electrolysis (corrosion) if you leave them powered on 24/7. The metal traces will literally eat themselves away within weeks. So, we will not connect the sensor's power pin to 3.3V. Instead, we will connect it to a GPIO Pin. We will turn the sensor ON for 10 milliseconds to take a reading, and then immediately turn it OFF. This should extend the sensor's life from weeks to years.
+
