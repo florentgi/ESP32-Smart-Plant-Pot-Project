@@ -45,7 +45,8 @@ Next, we asked Heikki for a rotary encoder module. This a rotary button allowing
 * **Julien Mignon**: Updated the daily log. Working on the calibration of the PH sensor.
 * **Léon Ehrwein**: Updated the README document and the diagram. Working on the calibration of the PH sensor.
 
-* **Results**:
+* **Results**: Today we are working on the calibration of the PH sensor. We went on a hunt to buy some distilled water but could not find it. After inquiring in a pharmacy, we managed to buy some sterilised water that could work for our calibration. We also brought soda with us. The idea is to make a solution by adding a teaspoon of soda to 100ml of sterilised water in order to saturate it. This way we can be sure that our ph for this solution will 8.3 at 25 degrees. Next, we cleaned the sensor, worked on the wiring and adapted our code to display PH data. Then, we proceeded to submerge the ph sensor in our solution and waited for the measure to stabilise.
+
 
 
 
