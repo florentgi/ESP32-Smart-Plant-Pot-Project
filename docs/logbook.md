@@ -32,14 +32,20 @@
 
 * **Florent Gilliéron**: Working on the calibration of the water level sensor.
 * **Julien Mignon**: Updated the daily log. Working on the calibration of the water level sensor.
-* **Léon Ehrwein**: Updated the README document andd the diagram. Working on the calibration of the water level sensor.
+* **Léon Ehrwein**: Updated the README document and the diagram. Working on the calibration of the water level sensor.
 
 * **Results**: After doing some research on resistive sensors, we found out that they suffer from electrolysis (corrosion) if you leave them powered on 24/7. The metal traces will literally eat themselves away within weeks. So, we will not connect the sensor's power pin to 3.3V. Instead, we will connect it to a GPIO Pin. We will turn the sensor ON for 10 milliseconds to take a reading, and then immediately turn it OFF. This should extend the sensor's life from weeks to years.
   
 * For the calibration, we took 2 measures. One with a dry sensor and another when submerged. As a result, we had a range of values that we adapted in our code as percentage for a better user experience and visibility.
-Next, we asked Heikki for a rotary encoder module. This a rotary button allowing us to have pages on our LCD screen. Our idea is to display an emoji on the main page for simplicity and readability, happy face if everything is good and so on. We want to use the following pages to display the data collected by the sensors. We spent the rest of the session adapting the code to implement theses changes.
+Next, we asked Heikki for a rotary encoder module. This a rotary button allowing us to have pages on our LCD screen. Our idea is to display an emoji on the main page for simplicity and readability, happy face if everything is good and so on. We want to use the following pages to display the data collected by the sensors. We spent the rest of the session adapting the code to implement theses changes successfully.
 
+## 🗓️ Wednesday, 28th of January 2026
 
+* **Florent Gilliéron**: Working on the calibration of the PH sensor.
+* **Julien Mignon**: Updated the daily log. Working on the calibration of the PH sensor.
+* **Léon Ehrwein**: Updated the README document and the diagram. Working on the calibration of the PH sensor.
+
+* **Results**: Today we are working on the calibration of the PH sensor. We went on a hunt to buy some distilled water but could not find it. After inquiring in a pharmacy, we managed to buy some sterilised water that could work for our calibration. We also brought soda with us. The idea is to make a solution by adding a teaspoon of soda to 100ml of sterilised water in order to saturate it. This way we can be sure that our ph for this solution will 8.3 at 25 degrees. Next, we cleaned the sensor, worked on the wiring and adapted our code to display PH data. Then, we proceeded to submerge the ph sensor in our solution and waited for the measure to stabilise. The good news was that our code was working and the wiring was done properly. Unfortunately, the measurements varied widely: from a PH of 0.06 to 11.6, indicating that the sensor was broken and would not be able to provide accurate readings. We have seen with Heikki the possibility of buying a new PH sensor. We will have to wait to receive it but our code is already working so it should not take long when we get our delivery.
 
 
 
