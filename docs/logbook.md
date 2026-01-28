@@ -32,17 +32,20 @@
 
 * **Florent Gilliéron**: Working on the calibration of the water level sensor.
 * **Julien Mignon**: Updated the daily log. Working on the calibration of the water level sensor.
-* **Léon Ehrwein**: Updated the README document andd the diagram. Working on the calibration of the water level sensor.
+* **Léon Ehrwein**: Updated the README document and the diagram. Working on the calibration of the water level sensor.
 
 * **Results**: After doing some research on resistive sensors, we found out that they suffer from electrolysis (corrosion) if you leave them powered on 24/7. The metal traces will literally eat themselves away within weeks. So, we will not connect the sensor's power pin to 3.3V. Instead, we will connect it to a GPIO Pin. We will turn the sensor ON for 10 milliseconds to take a reading, and then immediately turn it OFF. This should extend the sensor's life from weeks to years.
   
 * For the calibration, we took 2 measures. One with a dry sensor and another when submerged. As a result, we had a range of values that we adapted in our code as percentage for a better user experience and visibility.
 Next, we asked Heikki for a rotary encoder module. This a rotary button allowing us to have pages on our LCD screen. Our idea is to display an emoji on the main page for simplicity and readability, happy face if everything is good and so on. We want to use the following pages to display the data collected by the sensors. We spent the rest of the session adapting the code to implement theses changes successfully.
 
+## 🗓️ Wednesday, 28th of January 2026
 
+* **Florent Gilliéron**: Working on the calibration of the PH sensor.
+* **Julien Mignon**: Updated the daily log. Working on the calibration of the PH sensor.
+* **Léon Ehrwein**: Updated the README document and the diagram. Working on the calibration of the PH sensor.
 
-
-
+* **Results**:
 
 
 
