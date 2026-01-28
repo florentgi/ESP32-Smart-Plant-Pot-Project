@@ -9,6 +9,7 @@
 #define PIN_WATER_SIGNAL 32 // ADC Pin to read data
 #define PIN_WATER_POWER  25 // Digital Pin to power sensor
 #define PIN_SOIL 35
+// #define PIN_PH 33 // pH sensor
 
 // --- ROTARY ENCODER PINS ---
 #define PIN_IN1 27 // CLK (Wire to GPIO 27)
@@ -182,6 +183,22 @@ float getWaterLevel() {
     return constrain(percent, 0, 100);
 }
 
+// ph sensor
+/*float getPHLevel() {
+    int raw = analogRead(PIN_PH);
+    float voltage = raw * (3.3 / 4095.0);
+    
+    // Standard estimation for Freenove modules
+    float phValue = 3.5 * voltage; 
+    
+    // --- CALIBRATION FIX ---
+    // Change "0.0" to the difference you calculated in Step 3.
+    // Example: If it read 7.8 but should be 8.3, put +0.5
+    float calibrationOffset = 0.0; // <--- CHANGE THIS NUMBER
+    
+    return phValue + calibrationOffset; 
+}*/
+
 void setup() {
     Serial.begin(115200);
     Wire.begin(); 
@@ -203,6 +220,8 @@ void setup() {
     pinMode(PIN_WATER_SIGNAL, INPUT);
     pinMode(PIN_WATER_POWER, OUTPUT);
     digitalWrite(PIN_WATER_POWER, LOW);
+
+    //pinMode(PIN_PH, INPUT); //pH sensor
     
     // Button
     pinMode(PIN_BTN, INPUT_PULLUP); 
@@ -236,6 +255,8 @@ void loop() {
         float realLight = getLightPercentage();
         float realSoil = getSoilMoisture();
         float realWater = getWaterLevel();
+        //float realPH = getPHLevel(); // pH sensor
+        float mockPH = 6.5;
 
         uint16_t co2 = 0; float temp = 0.0; float hum = 0.0; 
         bool isReady = false;
@@ -245,8 +266,6 @@ void loop() {
              scd4x.readMeasurement(co2, temp, hum);
         }
         if (co2 == 0) { co2 = 400; temp = 22.0; } 
-
-        float mockPH = 6.5; 
 
         myPlant.updateSensors(realSoil, realWater, realLight, mockPH, temp, hum, co2);
         
