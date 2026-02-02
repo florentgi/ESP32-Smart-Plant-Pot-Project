@@ -4,359 +4,558 @@
 #include <SensirionI2cScd4x.h>
 #include <RotaryEncoder.h>
 
-// --- HARDWARE SETTINGS ---
-#define PIN_LIGHT 34        
-#define PIN_SOIL  35        
-// #define PIN_PH    33     // Disabled (Defective)
-#define PIN_WATER_SIGNAL 32 
-#define PIN_WATER_POWER  25 
+// =============================================================================
+// CONFIGURATION CONSTANTS
+// =============================================================================
 
-// --- ROTARY ENCODER PINS ---
-#define PIN_IN1 27 // CLK
-#define PIN_IN2 26 // DT
-#define PIN_BTN 14 // SW
+// Hardware Pins
+constexpr uint8_t PIN_LIGHT = 34;
+constexpr uint8_t PIN_SOIL = 35;
+constexpr uint8_t PIN_WATER_SIGNAL = 32;
+constexpr uint8_t PIN_WATER_POWER = 25;
+constexpr uint8_t PIN_IN1 = 27;
+constexpr uint8_t PIN_IN2 = 26;
+constexpr uint8_t PIN_BTN = 14;
 
-// --- MEMORY SETTINGS ---
-#define HISTORY_INTERVAL 5000 // 600000 // 10 Minutes in ms
-#define MAX_HISTORY 144         // 24 hours (6 logs/hr * 24h)
+// LCD Configuration
+constexpr uint8_t LCD_ADDRESS = 0x27;
+constexpr uint8_t LCD_COLS = 20;
+constexpr uint8_t LCD_ROWS = 4;
 
-// --- OBJECTS ---
-LiquidCrystal_I2C lcd(0x27, 20, 4);
-SensirionI2cScd4x scd4x;
-RotaryEncoder encoder(PIN_IN1, PIN_IN2, RotaryEncoder::LatchMode::TWO03);
+// Timing Constants
+constexpr unsigned long SENSOR_UPDATE_INTERVAL = 2000;      // 2 seconds
+constexpr unsigned long HISTORY_LOG_INTERVAL = 600000;      // 10 minutes
+constexpr unsigned long DEBOUNCE_DELAY = 50;                // 50ms
 
-// --- CALIBRATION ---
-const int DRY_VALUE      = 2933;  
-const int WATER_VALUE    = 2019;  
-const int TANK_EMPTY_RAW = 0;     
-const int TANK_FULL_RAW  = 1421;  
+// History Settings
+constexpr uint8_t MAX_HISTORY = 144;  // 24 hours at 10-min intervals
 
-// --- PLANT DATABASE ---
+// Sensor Calibration
+constexpr int SOIL_DRY_RAW = 2933;
+constexpr int SOIL_WET_RAW = 2019;
+constexpr int TANK_EMPTY_RAW = 0;
+constexpr int TANK_FULL_RAW = 1421;
+constexpr int ADC_MAX = 4095;
+
+// Sensor Validation Ranges
+constexpr float MIN_VALID_TEMP = -10.0f;
+constexpr float MAX_VALID_TEMP = 60.0f;
+constexpr float MIN_VALID_HUMIDITY = 0.0f;
+constexpr float MAX_VALID_HUMIDITY = 100.0f;
+constexpr uint16_t MIN_VALID_CO2 = 300;
+constexpr uint16_t MAX_VALID_CO2 = 5000;
+
+// Default Fallback Values
+constexpr uint16_t DEFAULT_CO2 = 400;
+constexpr float DEFAULT_TEMP = 22.0f;
+constexpr float DEFAULT_HUMIDITY = 50.0f;
+constexpr float DEFAULT_PH = 7.0f;
+
+// Graph Settings
+constexpr uint8_t GRAPH_HEIGHT = 16;  // 2 rows * 8 pixels
+constexpr uint8_t GRAPH_UPPER_ROW = 1;
+constexpr uint8_t GRAPH_LOWER_ROW = 2;
+constexpr uint8_t PIXELS_PER_ROW = 8;
+
+// =============================================================================
+// ENUMS & STRUCTURES
+// =============================================================================
+
+enum class PlantMood : uint8_t {
+    HAPPY, THIRSTY, OVERWATERED, EMPTY_TANK, SUNBURNT, COLD, TOO_DARK, HOT
+};
+
+enum class Page : uint8_t {
+    EMOJI = 0, DATA = 1, RECORDS = 2, GRAPH = 3, PLANT = 4, COUNT = 5
+};
+
+enum class AssetType : uint8_t { FACE, GRAPH };
+
 struct PlantProfile {
-    String name;
+    const char* name;
     float minSoil; float maxSoil;
     float minTemp; float maxTemp;
     float minLight; float maxLight;
 };
 
-PlantProfile plantDB[5] = {
-    // Name      SoilMin SoilMax TempMin TempMax LightMin LightMax
-    { "Generic", 20.0,   85.0,   10.0,   35.0,   0.0,     90.0 }, 
-    { "Cactus",  5.0,    40.0,   15.0,   40.0,   40.0,    100.0}, 
-    { "Fern",    50.0,   90.0,   18.0,   28.0,   10.0,    60.0 }, 
-    { "Basil",   30.0,   80.0,   20.0,   30.0,   50.0,    100.0}, 
-    { "Orchid",  20.0,   60.0,   18.0,   32.0,   20.0,    50.0 }  
-};
-
-int selectedPlantIndex = 0; 
-bool isEditingPlant = false; 
-
-// --- STATES ---
-enum PlantMood { HAPPY, THIRSTY, OVERWATERED, EMPTY_TANK, SUNBURNT, COLD, TOO_DARK, HOT };
-// UPDATED: Added PAGE_RECORDS
-enum Page { PAGE_EMOJI, PAGE_DATA, PAGE_PLANT, PAGE_RECORDS }; 
-
 struct PlantData {
-    float soilMoisture; float waterLevel; float lightLevel; float pH;             
-    float temperature; float airHumidity; uint16_t co2;         
+    float soilMoisture; float waterLevel; float lightLevel; float pH;
+    float temperature; float airHumidity; uint16_t co2;
+    
+    PlantData() : soilMoisture(0), waterLevel(0), lightLevel(0), 
+                  pH(DEFAULT_PH), temperature(DEFAULT_TEMP), 
+                  airHumidity(DEFAULT_HUMIDITY), co2(DEFAULT_CO2) {}
 };
 
-// --- SMART POT CLASS ---
+// =============================================================================
+// PLANT DATABASE
+// =============================================================================
+
+const PlantProfile PLANT_DB[] PROGMEM = {
+    {"Generic", 20.0f, 85.0f, 10.0f, 35.0f, 0.0f, 90.0f},
+    {"Cactus",  5.0f,  40.0f, 15.0f, 40.0f, 40.0f, 100.0f},
+    {"Fern",    50.0f, 90.0f, 18.0f, 28.0f, 10.0f, 60.0f},
+    {"Basil",   30.0f, 80.0f, 20.0f, 30.0f, 50.0f, 100.0f},
+    {"Orchid",  20.0f, 60.0f, 18.0f, 32.0f, 20.0f, 50.0f}
+};
+constexpr uint8_t PLANT_DB_SIZE = sizeof(PLANT_DB) / sizeof(PLANT_DB[0]);
+
+// =============================================================================
+// CUSTOM LCD CHARACTERS
+// =============================================================================
+
+// Graph Bar Characters (0-7)
+const byte BAR_CHARS[8][8] PROGMEM = {
+    {0,0,0,0,0,0,0,0}, {0,0,0,0,0,0,0,31}, {0,0,0,0,0,0,31,31}, {0,0,0,0,0,31,31,31},
+    {0,0,0,0,31,31,31,31}, {0,0,0,31,31,31,31,31}, {0,0,31,31,31,31,31,31}, {31,31,31,31,31,31,31,31}
+};
+
+// Face Characters (Eyes, Mouth, and Cheeks for 3-row look)
+const byte FACE_EYE_OPEN[8] PROGMEM    = {B00111, B01111, B11111, B11111, B11111, B11111, B01111, B00111};
+const byte FACE_EYE_CLOSED[8] PROGMEM  = {B00000, B00000, B00000, B00000, B11111, B11111, B00000, B00000};
+const byte FACE_MOUTH_HAPPY_L[8] PROGMEM = {B00000, B00000, B10000, B11000, B11100, B01110, B00111, B00011};
+const byte FACE_MOUTH_HAPPY_R[8] PROGMEM = {B00000, B00000, B00001, B00011, B00111, B01110, B11100, B11000};
+const byte FACE_MOUTH_SAD_L[8] PROGMEM   = {B00011, B00111, B01110, B11100, B11000, B10000, B00000, B00000};
+const byte FACE_MOUTH_SAD_R[8] PROGMEM   = {B11000, B11100, B01110, B00111, B00011, B00001, B00000, B00000};
+// NEW: Cheeks/Body to connect eyes and mouth
+const byte FACE_BODY_L[8] PROGMEM        = {B11000, B11000, B11000, B11000, B11000, B11000, B11000, B11000};
+const byte FACE_BODY_R[8] PROGMEM        = {B00011, B00011, B00011, B00011, B00011, B00011, B00011, B00011};
+
+// =============================================================================
+// GLOBAL OBJECTS
+// =============================================================================
+
+LiquidCrystal_I2C lcd(LCD_ADDRESS, LCD_COLS, LCD_ROWS);
+SensirionI2cScd4x scd4x;
+RotaryEncoder encoder(PIN_IN1, PIN_IN2, RotaryEncoder::LatchMode::TWO03);
+
+// =============================================================================
+// ASSET MANAGER CLASS
+// =============================================================================
+
+class AssetManager {
+private:
+    AssetType currentAsset;
+    
+public:
+    AssetManager() : currentAsset(AssetType::FACE) {}
+    
+    void loadAssets(AssetType type) {
+        if (currentAsset == type) return; 
+        currentAsset = type;
+        if (type == AssetType::FACE) loadFaceAssets();
+        else if (type == AssetType::GRAPH) loadGraphAssets();
+    }
+    
+private:
+    void loadFaceAssets() {
+        byte temp[8];
+        memcpy_P(temp, FACE_EYE_OPEN, 8);      lcd.createChar(0, temp);
+        memcpy_P(temp, FACE_EYE_CLOSED, 8);    lcd.createChar(1, temp);
+        memcpy_P(temp, FACE_MOUTH_HAPPY_L, 8); lcd.createChar(2, temp);
+        memcpy_P(temp, FACE_MOUTH_HAPPY_R, 8); lcd.createChar(3, temp);
+        memcpy_P(temp, FACE_MOUTH_SAD_L, 8);   lcd.createChar(4, temp);
+        memcpy_P(temp, FACE_MOUTH_SAD_R, 8);   lcd.createChar(5, temp);
+        memcpy_P(temp, FACE_BODY_L, 8);        lcd.createChar(6, temp); // Left Cheek
+        memcpy_P(temp, FACE_BODY_R, 8);        lcd.createChar(7, temp); // Right Cheek
+    }
+    
+    void loadGraphAssets() {
+        byte temp[8];
+        for (uint8_t i = 0; i < 8; i++) {
+            memcpy_P(temp, BAR_CHARS[i], 8);
+            lcd.createChar(i, temp);
+        }
+    }
+};
+
+// =============================================================================
+// BUTTON HANDLER CLASS
+// =============================================================================
+
+class ButtonHandler {
+private:
+    uint8_t pin;
+    bool lastState;
+    unsigned long lastDebounceTime;
+    bool debouncedState;
+    
+public:
+    ButtonHandler(uint8_t buttonPin) : pin(buttonPin), lastState(HIGH), lastDebounceTime(0), debouncedState(HIGH) {}
+    
+    void begin() {
+        pinMode(pin, INPUT_PULLUP);
+        debouncedState = digitalRead(pin);
+        lastState = debouncedState;
+    }
+    
+    bool wasPressed() {
+        bool currentState = digitalRead(pin);
+        bool pressed = false;
+        
+        if (currentState != lastState) lastDebounceTime = millis();
+        
+        if ((millis() - lastDebounceTime) > DEBOUNCE_DELAY) {
+            if (currentState != debouncedState) {
+                debouncedState = currentState;
+                if (debouncedState == LOW) pressed = true;
+            }
+        }
+        lastState = currentState;
+        return pressed;
+    }
+};
+
+// =============================================================================
+// SENSOR MANAGER CLASS
+// =============================================================================
+
+class SensorManager {
+public:
+    static float getLightPercentage() {
+        return constrain((analogRead(PIN_LIGHT) / (float)ADC_MAX) * 100.0f, 0.0f, 100.0f);
+    }
+    
+    static float getSoilMoisture() {
+        int raw = analogRead(PIN_SOIL);
+        return constrain(map(raw, SOIL_DRY_RAW, SOIL_WET_RAW, 0, 100), 0, 100);
+    }
+    
+    static float getWaterLevel() {
+        digitalWrite(PIN_WATER_POWER, HIGH); delay(10);
+        int raw = analogRead(PIN_WATER_SIGNAL); digitalWrite(PIN_WATER_POWER, LOW);
+        return constrain(map(raw, TANK_EMPTY_RAW, TANK_FULL_RAW, 0, 100), 0, 100);
+    }
+    
+    static bool readCO2Sensor(uint16_t &co2, float &temp, float &humidity) {
+        bool isReady = false;
+        if (scd4x.getDataReadyStatus(isReady) != 0) return false;
+        if (!isReady) return false;
+        if (scd4x.readMeasurement(co2, temp, humidity) != 0) return false;
+        
+        if (temp < MIN_VALID_TEMP || temp > MAX_VALID_TEMP) return false;
+        if (humidity < MIN_VALID_HUMIDITY || humidity > MAX_VALID_HUMIDITY) return false;
+        if (co2 < MIN_VALID_CO2 || co2 > MAX_VALID_CO2) return false;
+        return true;
+    }
+};
+
+// =============================================================================
+// LCD HELPER CLASS
+// =============================================================================
+
+class LCDHelper {
+public:
+    static void printCentered(uint8_t row, const char* text) {
+        uint8_t len = strlen(text);
+        uint8_t pos = (len < LCD_COLS) ? (LCD_COLS - len) / 2 : 0;
+        lcd.setCursor(0, row);
+        for (uint8_t i = 0; i < LCD_COLS; i++) lcd.print(' ');
+        lcd.setCursor(pos, row);
+        lcd.print(text);
+    }
+    
+    static void clearLine(uint8_t row) {
+        lcd.setCursor(0, row);
+        for (uint8_t i = 0; i < LCD_COLS; i++) lcd.print(' ');
+    }
+};
+
+// =============================================================================
+// SMART POT CLASS
+// =============================================================================
+
 class SmartPot {
 private:
-    PlantData data;
+    PlantData currentData;
     PlantMood currentMood;
-
-    PlantData history[MAX_HISTORY]; 
-    int historyIndex = 0;           
-    int historyCount = 0;           
-
+    PlantData history[MAX_HISTORY];
+    uint8_t historyIndex;
+    uint8_t historyCount;
+    
 public:
-    SmartPot() : currentMood(HAPPY) {
-        data = {0, 0, 0, 7.0, 20.0, 50.0, 400};
-    }
-
-    // --- HISTORY LOGIC ---
+    SmartPot() : currentMood(PlantMood::HAPPY), historyIndex(0), historyCount(0) {}
+    
+    // --- History Management ---
     void logHistory() {
-        history[historyIndex] = data; 
-        historyIndex++;
-        if (historyIndex >= MAX_HISTORY) historyIndex = 0; 
+        history[historyIndex] = currentData;
+        historyIndex = (historyIndex + 1) % MAX_HISTORY;
         if (historyCount < MAX_HISTORY) historyCount++;
-        
-        Serial.print(">> LOG SAVED. Total Records: ");
-        Serial.println(historyCount);
+        Serial.printf(">> LOG SAVED. Total Records: %d\n", historyCount);
     }
-
-    PlantData getHistoryItem(int ago) {
+    
+    PlantData getHistoryItem(uint8_t ago) const {
+        if (ago >= historyCount) return PlantData();
         int targetIndex = historyIndex - 1 - ago;
-        if (targetIndex < 0) targetIndex += MAX_HISTORY; 
+        if (targetIndex < 0) targetIndex += MAX_HISTORY;
         return history[targetIndex];
     }
-
-    void printHistory() {
+    
+    void printHistory() const {
         Serial.println("\n====== 24H DATA HISTORY ======");
-        if (historyCount == 0) {
-            Serial.println("No records yet.");
-            return;
-        }
-        for (int i = 0; i < historyCount; i++) {
+        for (uint8_t i = 0; i < historyCount; i++) {
             PlantData record = getHistoryItem(i);
-            Serial.printf("-%3d min | Soil: %.0f%% | Temp: %.1fC | Light: %.0f%%\n", 
-                          i * 10, record.soilMoisture, record.temperature, record.lightLevel);
+            Serial.printf("-%3d min | Soil: %.0f%% | Temp: %.1fC\n", i * 10, record.soilMoisture, record.temperature);
         }
         Serial.println("==============================\n");
     }
-
+    
+    // --- Sensor & Logic ---
     void updateSensors(float moisture, float water, float light, float ph, float temp, float hum, uint16_t co2Val) {
-        data.soilMoisture = moisture;
-        data.waterLevel = water;
-        data.lightLevel = light;
-        data.pH = ph;
-        data.temperature = temp;
-        data.airHumidity = hum;
-        data.co2 = co2Val;
+        currentData.soilMoisture = moisture;
+        currentData.waterLevel = water;
+        currentData.lightLevel = light;
+        currentData.pH = ph;
+        currentData.temperature = temp;
+        currentData.airHumidity = hum;
+        currentData.co2 = co2Val;
         evaluateMood();
     }
-
+    
     void evaluateMood() {
-        PlantProfile p = plantDB[selectedPlantIndex];
-
-        if (data.waterLevel < 10.0) currentMood = EMPTY_TANK; 
-        else if (data.soilMoisture < p.minSoil) currentMood = THIRSTY;
-        else if (data.soilMoisture > p.maxSoil) currentMood = OVERWATERED;
-        else if (data.temperature < p.minTemp)  currentMood = COLD;
-        else if (data.temperature > p.maxTemp)  currentMood = HOT;
-        else if (data.lightLevel > p.maxLight)  currentMood = SUNBURNT;
-        else if (data.lightLevel < p.minLight)  currentMood = TOO_DARK;
-        else currentMood = HAPPY;
-    }
-
-    String getEmoji() {
-        switch (currentMood) {
-            case HAPPY:        return "( ^_^) ";
-            case THIRSTY:      return "( >_<) ";
-            case OVERWATERED:  return "( ~_~) ";
-            case EMPTY_TANK:   return "( O_O) ";
-            case SUNBURNT:     return "( x_x) ";
-            case HOT:          return "( @.@) ";
-            case COLD:         return "(*_* ) ";
-            case TOO_DARK:     return "( -_-) ";
-            default:           return "( o_o) ";
-        }
-    }
-
-    String getMoodText() {
-        switch (currentMood) {
-            case HAPPY:        return "Happy";
-            case THIRSTY:      return "Thirsty!";
-            case OVERWATERED:  return "Too Wet!";
-            case EMPTY_TANK:   return "Refill!";
-            case SUNBURNT:     return "Sunburn!";
-            case HOT:          return "Too Hot!";
-            case COLD:         return "Too Cold!";
-            case TOO_DARK:     return "Need Sun";
-            default:           return "Unknown";
-        }
-    }
-
-    // --- PAGE 1: EMOJI ---
-    void drawPageEmoji() {
-        lcd.setCursor(0, 0); lcd.print(" The Smart Gardener "); 
-        lcd.setCursor(5, 1); lcd.print(getEmoji()); 
-        lcd.setCursor(5, 2); lcd.print(getMoodText()); 
+        PlantProfile profile;
+        memcpy_P(&profile, &PLANT_DB[getSelectedPlantIndex()], sizeof(PlantProfile));
         
-        String name = plantDB[selectedPlantIndex].name;
-        int centerPos = (20 - name.length()) / 2;
-        lcd.setCursor(0, 3); lcd.print("                    "); 
-        lcd.setCursor(centerPos, 3); lcd.print(name);
+        if (currentData.waterLevel < 10.0f) currentMood = PlantMood::EMPTY_TANK;
+        else if (currentData.soilMoisture < profile.minSoil) currentMood = PlantMood::THIRSTY;
+        else if (currentData.soilMoisture > profile.maxSoil) currentMood = PlantMood::OVERWATERED;
+        else if (currentData.temperature < profile.minTemp) currentMood = PlantMood::COLD;
+        else if (currentData.temperature > profile.maxTemp) currentMood = PlantMood::HOT;
+        else if (currentData.lightLevel > profile.maxLight) currentMood = PlantMood::SUNBURNT;
+        else if (currentData.lightLevel < profile.minLight) currentMood = PlantMood::TOO_DARK;
+        else currentMood = PlantMood::HAPPY;
     }
-
-    // --- PAGE 2: DASHBOARD ---
-    void drawPageData() {
-        char buffer[21]; 
-        lcd.setCursor(0, 0);
-        snprintf(buffer, 21, "Soil:%3.0f%%  H2O:%3.0f%%", data.soilMoisture, data.waterLevel);
-        lcd.print(buffer);
-        lcd.setCursor(0, 1);
-        snprintf(buffer, 21, "Sun :%3.0f%%  pH :%3.1f", data.lightLevel, data.pH);
-        lcd.print(buffer);
-        lcd.setCursor(0, 2);
-        snprintf(buffer, 21, "Temp:%2.0fC   Hum:%3.0f%%", data.temperature, data.airHumidity);
-        lcd.print(buffer);
-        lcd.setCursor(0, 3);
-        snprintf(buffer, 21, "CO2 :%4d ppm", data.co2);
-        lcd.print(buffer);
-    }
-
-    // --- PAGE 3: PLANT SELECT ---
-    void drawPageSelect() {
-        lcd.setCursor(0, 0); lcd.print("--- SELECT PLANT ---");
-        if (isEditingPlant) {
-            lcd.setCursor(0, 1); lcd.print("> "); 
-            lcd.print(plantDB[selectedPlantIndex].name);
-            lcd.print(" <  "); 
-            lcd.setCursor(0, 3); lcd.print("[CLICK TO SAVE]     ");
-        } else {
-            lcd.setCursor(0, 1); lcd.print("  "); 
-            lcd.print(plantDB[selectedPlantIndex].name);
-            lcd.print("    ");
-            lcd.setCursor(0, 3); lcd.print("[CLICK TO EDIT]     ");
+    
+    const char* getMoodText() const {
+        switch (currentMood) {
+            case PlantMood::HAPPY: return "Happy"; case PlantMood::THIRSTY: return "Thirsty!";
+            case PlantMood::OVERWATERED: return "Too Wet!"; case PlantMood::EMPTY_TANK: return "Refill Tank!";
+            case PlantMood::SUNBURNT: return "Sunburnt!"; case PlantMood::HOT: return "Too Hot!";
+            case PlantMood::COLD: return "Too Cold!"; case PlantMood::TOO_DARK: return "Need Light!";
+            default: return "Unknown";
         }
-        lcd.setCursor(0, 2); 
-        char buff[21];
-        snprintf(buff, 21, "W:%2.0f-%2.0f%% T:%2.0f-%2.0fC", 
-            plantDB[selectedPlantIndex].minSoil, plantDB[selectedPlantIndex].maxSoil,
-            plantDB[selectedPlantIndex].minTemp, plantDB[selectedPlantIndex].maxTemp);
-        lcd.print(buff);
     }
+    
+    bool isHappy() const { return currentMood == PlantMood::HAPPY; }
+    
+    // --- Drawing Methods ---
+    
+    void drawPageEmoji() const {
+        PlantProfile profile;
+        memcpy_P(&profile, &PLANT_DB[getSelectedPlantIndex()], sizeof(PlantProfile));
+        bool happy = isHappy();
 
-    // --- PAGE 4: 24H RECORDS (NEW!) ---
-    void drawPageRecords() {
+        // --- LEFT SIDE: TEXT INFO ---
+        
+        // Row 0: Plant Name
+        // We use %-16s to print the name and pad the rest with spaces to clear old text
+        char buf[17]; 
+        snprintf(buf, 17, "%-16s", profile.name); 
+        lcd.setCursor(0, 0); 
+        lcd.print(buf);
+
+        // Row 1 & 2: Clear the middle left area (Optional: could put Temp/Hum here later)
+        lcd.setCursor(0, 1); lcd.print("                ");
+        lcd.setCursor(0, 2); lcd.print("                ");
+
+        // Row 3: Status Message
+        // We also use %-16s to ensure "Happy" clears out "Refill Tank!"
+        const char* status = getMoodText();
+        snprintf(buf, 17, "%-16s", status);
+        lcd.setCursor(0, 3); 
+        lcd.print(buf);
+
+        // --- RIGHT SIDE: THE 4-ROW TOTEM FACE ---
+        
+        // Row 0: Eyes
+        lcd.setCursor(17, 0); lcd.write(happy ? 0 : 1);
+        lcd.setCursor(18, 0); lcd.write(happy ? 0 : 1);
+
+        // Row 1: Upper Body (Connector)
+        lcd.setCursor(17, 1); lcd.write(6); 
+        lcd.setCursor(18, 1); lcd.write(7); 
+
+        // Row 2: Lower Body (Connector extension)
+        lcd.setCursor(17, 2); lcd.write(6); 
+        lcd.setCursor(18, 2); lcd.write(7); 
+
+        // Row 3: Mouth
+        lcd.setCursor(17, 3); lcd.write(happy ? 2 : 4);
+        lcd.setCursor(18, 3); lcd.write(happy ? 3 : 5);
+    }
+    
+    void drawPageData() const {
+        char buf[LCD_COLS + 1];
+        lcd.setCursor(0, 0); snprintf(buf, sizeof(buf), "Soil:%3.0f%%  H2O:%3.0f%%", currentData.soilMoisture, currentData.waterLevel); lcd.print(buf);
+        lcd.setCursor(0, 1); snprintf(buf, sizeof(buf), "Sun :%3.0f%%  pH :%3.1f", currentData.lightLevel, currentData.pH); lcd.print(buf);
+        lcd.setCursor(0, 2); snprintf(buf, sizeof(buf), "Temp:%2.0fC   Hum:%3.0f%%", currentData.temperature, currentData.airHumidity); lcd.print(buf);
+        lcd.setCursor(0, 3); snprintf(buf, sizeof(buf), "CO2 :%4d ppm         ", currentData.co2); lcd.print(buf);
+    }
+    
+    void drawPageRecords() const {
         lcd.setCursor(0, 0); lcd.print("--- 24H RECORDS --- ");
-
-        // Handle case with no data
         if (historyCount == 0) {
-            lcd.setCursor(0, 1); lcd.print(" collecting data... ");
-            lcd.setCursor(0, 2); lcd.print(" wait 10 mins...    ");
+            lcd.setCursor(0, 1); lcd.print(" Collecting data... ");
+            lcd.setCursor(0, 2); lcd.print(" Wait 10 minutes... ");
             return;
         }
-
-        // Calculate Min/Max for Temp and Humidity
         PlantData first = getHistoryItem(0);
-        float minT = first.temperature; float maxT = first.temperature;
-        float minH = first.airHumidity; float maxH = first.airHumidity;
-
-        // Loop through valid history to find extremes
-        for(int i = 0; i < historyCount; i++) {
-            PlantData p = getHistoryItem(i);
-            if(p.temperature < minT) minT = p.temperature;
-            if(p.temperature > maxT) maxT = p.temperature;
-            if(p.airHumidity < minH) minH = p.airHumidity;
-            if(p.airHumidity > maxH) maxH = p.airHumidity;
+        float minT = first.temperature, maxT = first.temperature;
+        float minH = first.airHumidity, maxH = first.airHumidity;
+        float minS = first.soilMoisture, maxS = first.soilMoisture;
+        
+        for (uint8_t i = 1; i < historyCount; i++) {
+            PlantData r = getHistoryItem(i);
+            if (r.temperature < minT) minT = r.temperature; if (r.temperature > maxT) maxT = r.temperature;
+            if (r.airHumidity < minH) minH = r.airHumidity; if (r.airHumidity > maxH) maxH = r.airHumidity;
+            if (r.soilMoisture < minS) minS = r.soilMoisture; if (r.soilMoisture > maxS) maxS = r.soilMoisture;
         }
-
-        // Draw Results
-        char buf[21];
-        lcd.setCursor(0, 1);
-        snprintf(buf, 21, "Temp:%2.0fC - %2.0fC    ", minT, maxT);
-        lcd.print(buf);
-
-        lcd.setCursor(0, 2);
-        snprintf(buf, 21, "Hum :%2.0f%% - %2.0f%%    ", minH, maxH);
-        lcd.print(buf);
-
-        lcd.setCursor(0, 3);
-        lcd.print("Samples: "); lcd.print(historyCount);
+        char buf[LCD_COLS + 1];
+        lcd.setCursor(0, 1); snprintf(buf, sizeof(buf), "Temp:%2.0fC - %2.0fC    ", minT, maxT); lcd.print(buf);
+        lcd.setCursor(0, 2); snprintf(buf, sizeof(buf), "Hum :%2.0f%% - %2.0f%%    ", minH, maxH); lcd.print(buf);
+        lcd.setCursor(0, 3); snprintf(buf, sizeof(buf), "Soil:%2.0f%% - %2.0f%%    ", minS, maxS); lcd.print(buf);
     }
+    
+    void drawPageGraph() const {
+        lcd.setCursor(0, 0); lcd.print("100%   Soil Trend   ");
+        lcd.setCursor(0, 3); lcd.print("0%   (Last 2.5 Hrs) ");
+        for (uint8_t i = 0; i < LCD_COLS; i++) {
+            uint8_t col = LCD_COLS - 1 - i;
+            if (i < historyCount) {
+                PlantData r = getHistoryItem(i);
+                drawGraphColumn(col, r.soilMoisture);
+            } else {
+                lcd.setCursor(col, GRAPH_UPPER_ROW); lcd.print(" ");
+                lcd.setCursor(col, GRAPH_LOWER_ROW); lcd.print(" ");
+            }
+        }
+    }
+    
+    void drawPagePlant(bool isEditing) const {
+        PlantProfile profile;
+        memcpy_P(&profile, &PLANT_DB[getSelectedPlantIndex()], sizeof(PlantProfile));
+        
+        lcd.setCursor(0, 0); lcd.print("--- SELECT PLANT ---");
+        
+        // Clear line 1 first to avoid flickering when toggling arrows
+        LCDHelper::clearLine(1); 
+        lcd.setCursor(0, 1);
+        
+        if (isEditing) {
+            lcd.print("> "); lcd.print(profile.name); lcd.print(" <");
+        } else {
+            lcd.print("  "); lcd.print(profile.name); lcd.print("    ");
+        }
+        
+        char buf[LCD_COLS + 1];
+        lcd.setCursor(0, 2);
+        snprintf(buf, sizeof(buf), "W:%2.0f-%2.0f%% T:%2.0f-%2.0fC", profile.minSoil, profile.maxSoil, profile.minTemp, profile.maxTemp);
+        lcd.print(buf);
+        lcd.setCursor(0, 3);
+        lcd.print(isEditing ? "[CLICK TO SAVE]     " : "[CLICK TO EDIT]     ");
+    }
+    
+private:
+    void drawGraphColumn(uint8_t col, float soilPercent) const {
+        int totalHeight = map(constrain((int)soilPercent, 0, 100), 0, 100, 0, GRAPH_HEIGHT - 1);
+        uint8_t upper = 0, lower = 0;
+        if (totalHeight >= PIXELS_PER_ROW) {
+            lower = 7; 
+            upper = min(totalHeight - PIXELS_PER_ROW, 7);
+        } else {
+            lower = totalHeight; 
+            upper = 0;
+        }
+        lcd.setCursor(col, GRAPH_UPPER_ROW); if (upper > 0) lcd.write(upper); else lcd.print(" ");
+        lcd.setCursor(col, GRAPH_LOWER_ROW); if (lower > 0) lcd.write(lower); else lcd.print("_");
+    }
+    
+    static uint8_t selectedPlantIndex;
+public:
+    static uint8_t getSelectedPlantIndex() { return selectedPlantIndex; }
+    static void selectNextPlant() { selectedPlantIndex = (selectedPlantIndex + 1) % PLANT_DB_SIZE; }
+    static void selectPreviousPlant() { selectedPlantIndex = (selectedPlantIndex == 0) ? PLANT_DB_SIZE - 1 : selectedPlantIndex - 1; }
 };
 
-// --- GLOBALS ---
-SmartPot myPlant;
-Page currentPage = PAGE_EMOJI; 
-unsigned long lastUpdate = 0;
-unsigned long lastHistoryTime = 0; 
-const long interval = 2000;
+uint8_t SmartPot::selectedPlantIndex = 0;
 
-// --- SENSOR HELPERS ---
-float getLightPercentage() {
-    return (analogRead(PIN_LIGHT) / 4095.0) * 100.0;
-}
-float getSoilMoisture() {
-    int raw = analogRead(PIN_SOIL); 
-    return constrain(map(raw, DRY_VALUE, WATER_VALUE, 0, 100), 0, 100);
-}
-float getWaterLevel() {
-    digitalWrite(PIN_WATER_POWER, HIGH); delay(10); 
-    int raw = analogRead(PIN_WATER_SIGNAL);
-    digitalWrite(PIN_WATER_POWER, LOW);
-    return constrain(map(raw, TANK_EMPTY_RAW, TANK_FULL_RAW, 0, 100), 0, 100);
-}
+// =============================================================================
+// GLOBAL STATE & MAIN LOOPS
+// =============================================================================
+
+SmartPot myPlant;
+AssetManager assetManager;
+ButtonHandler button(PIN_BTN);
+Page currentPage = Page::EMOJI;
+bool isEditingPlant = false;
+unsigned long lastSensorUpdate = 0;
+unsigned long lastHistoryLog = 0;
 
 void setup() {
     Serial.begin(115200);
-    Wire.begin(); 
-    lcd.init(); lcd.backlight(); 
+    Wire.begin();
+    lcd.init(); lcd.backlight(); lcd.clear();
+    
+    assetManager.loadAssets(AssetType::FACE);
     
     scd4x.begin(Wire, 0x62); 
-    scd4x.stopPeriodicMeasurement(); scd4x.startPeriodicMeasurement();
+    scd4x.stopPeriodicMeasurement(); delay(500); scd4x.startPeriodicMeasurement();
     
-    pinMode(PIN_LIGHT, INPUT);
-    pinMode(PIN_SOIL, INPUT);
-    pinMode(PIN_WATER_SIGNAL, INPUT);
-    pinMode(PIN_WATER_POWER, OUTPUT);
+    pinMode(PIN_LIGHT, INPUT); pinMode(PIN_SOIL, INPUT);
+    pinMode(PIN_WATER_SIGNAL, INPUT); pinMode(PIN_WATER_POWER, OUTPUT);
     digitalWrite(PIN_WATER_POWER, LOW);
-    pinMode(PIN_BTN, INPUT_PULLUP); 
-
-    lcd.clear();
+    button.begin();
 }
 
 void loop() {
-    // 1. INPUT HANDLING
-    encoder.tick(); 
-    int newPos = encoder.getPosition();
-    static int lastPos = -1;
-
-    // Button Logic
-    if (digitalRead(PIN_BTN) == LOW) {
-        delay(200); 
-        while(digitalRead(PIN_BTN) == LOW); 
-
-        if (currentPage == PAGE_PLANT) {
-            isEditingPlant = !isEditingPlant; 
-            lcd.clear();
-            lastUpdate = 0; 
+    static int lastEncoderPos = 0;
+    encoder.tick();
+    int currentEncoderPos = encoder.getPosition();
+    
+    if (button.wasPressed()) {
+        if (currentPage == Page::PLANT) {
+            isEditingPlant = !isEditingPlant;
+            lcd.clear(); lastSensorUpdate = 0;
         }
     }
-
-    // Rotation Logic
-    if (lastPos != newPos) {
+    
+    if (currentEncoderPos != lastEncoderPos) {
         if (isEditingPlant) {
-            if (newPos > lastPos) selectedPlantIndex++;
-            else selectedPlantIndex--;
-
-            if (selectedPlantIndex > 4) selectedPlantIndex = 0;
-            if (selectedPlantIndex < 0) selectedPlantIndex = 4;
+            if (currentEncoderPos > lastEncoderPos) SmartPot::selectNextPlant();
+            else SmartPot::selectPreviousPlant();
         } else {
-            // Page Logic (Now 0-3 for 4 pages)
-            int pageIndex = abs(newPos) % 4; 
-            if (pageIndex == 0) currentPage = PAGE_EMOJI;
-            else if (pageIndex == 1) currentPage = PAGE_DATA;
-            else if (pageIndex == 2) currentPage = PAGE_PLANT;
-            else currentPage = PAGE_RECORDS;
+            int pageIndex = abs(currentEncoderPos) % (int)Page::COUNT;
+            Page newPage = static_cast<Page>(pageIndex);
+            
+            if (newPage == Page::GRAPH && currentPage != Page::GRAPH) assetManager.loadAssets(AssetType::GRAPH);
+            else if (newPage != Page::GRAPH && currentPage == Page::GRAPH) assetManager.loadAssets(AssetType::FACE);
+            currentPage = newPage;
         }
-        lcd.clear(); 
-        lastUpdate = 0; 
-        lastPos = newPos;
+        lcd.clear(); lastSensorUpdate = 0; lastEncoderPos = currentEncoderPos;
     }
-
-    // 2. PERIODIC UPDATE
-    if (millis() - lastUpdate >= interval) {
-        lastUpdate = millis();
-
-        float realLight = getLightPercentage();
-        float realSoil = getSoilMoisture();
-        float realWater = getWaterLevel();
-        float mockPH = 7.0; 
-
-        uint16_t co2 = 0; float temp = 0.0; float hum = 0.0; 
-        bool isReady = false;
-        if (scd4x.getDataReadyStatus(isReady) == 0 && isReady) {
-             scd4x.readMeasurement(co2, temp, hum);
-        }
-        if (co2 == 0) { co2 = 400; temp = 22.0; } 
-
-        myPlant.updateSensors(realSoil, realWater, realLight, mockPH, temp, hum, co2);
+    
+    if (millis() - lastSensorUpdate >= SENSOR_UPDATE_INTERVAL) {
+        lastSensorUpdate = millis();
+        float light = SensorManager::getLightPercentage();
+        float soil = SensorManager::getSoilMoisture();
+        float water = SensorManager::getWaterLevel();
+        uint16_t co2 = DEFAULT_CO2; float temp = DEFAULT_TEMP; float hum = DEFAULT_HUMIDITY;
         
-        if (currentPage == PAGE_EMOJI) myPlant.drawPageEmoji();
-        else if (currentPage == PAGE_DATA) myPlant.drawPageData();
-        else if (currentPage == PAGE_PLANT) myPlant.drawPageSelect();
-        else myPlant.drawPageRecords(); // New Page!
+        if (!SensorManager::readCO2Sensor(co2, temp, hum)) { co2=DEFAULT_CO2; temp=DEFAULT_TEMP; hum=DEFAULT_HUMIDITY; }
+        myPlant.updateSensors(soil, water, light, DEFAULT_PH, temp, hum, co2);
+        
+        switch (currentPage) {
+            case Page::EMOJI: myPlant.drawPageEmoji(); break;
+            case Page::DATA: myPlant.drawPageData(); break;
+            case Page::RECORDS: myPlant.drawPageRecords(); break;
+            case Page::GRAPH: myPlant.drawPageGraph(); break;
+            case Page::PLANT: myPlant.drawPagePlant(isEditingPlant); break;
+            default: break;
+        }
     }
-
-    // 3. HISTORY LOGGING
-    if (millis() - lastHistoryTime >= HISTORY_INTERVAL) {
-        lastHistoryTime = millis();
-        myPlant.logHistory();    
-        myPlant.printHistory();  
+    
+    if (millis() - lastHistoryLog >= HISTORY_LOG_INTERVAL) {
+        lastHistoryLog = millis();
+        myPlant.logHistory(); myPlant.printHistory();
     }
 }
