@@ -52,6 +52,7 @@ We decided to adapt our code to create a page on our LCD screen allowing the use
 
 * **Florent Gilliéron**: Worked on the layout of the pages for the LCD screen.
 * **Julien Mignon**: Updated the daily log. Worked on the web user interface.
-* **Léon Ehrwein**:
+* **Léon Ehrwein**: Worked on cloud based solution with Azure.
 
 * **Results**:
+
