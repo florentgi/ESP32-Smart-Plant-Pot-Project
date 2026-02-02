@@ -54,5 +54,18 @@ We decided to adapt our code to create a page on our LCD screen allowing the use
 * **Julien Mignon**: Updated the daily log. Worked on the web user interface.
 * **Léon Ehrwein**: Worked on cloud based solution with Azure.
 
-* **Results**:
+* **Results**: Today’s development focused on bridging real-time environmental data with a more intuitive user experience. Key updates include:
+
+Intelligent Environmental Logic: We integrated local weather data to provide proactive care. The system now adjusts watering recommendations dynamically—for instance, increasing frequency during forecasted heatwaves.
+
+Growth Timelapse Module: A high-fidelity component was added to the dashboard. It features a centered video player with playback controls, a 30-day interactive timeline slider, and a "Milestone Sidebar" to track growth progress from seedling (🌱) to maturity (🪴).
+
+Hardware Expansion: We have commissioned an additional ESP32 with an integrated camera. This will capture daily snapshots every 24 hours to automatically populate the timelapse folder.
+
+Data Persistence & Analytics: * Backend: We implemented a data averaging system that processes measurements every 2 seconds to generate a clean 24-hour historical log.
+
+LCD Display: Added a dedicated "Analytics Screen" on the device hardware, displaying 24-hour Min/Max metrics for all sensors.
+
+Cosmetic Refinement: UI elements were overhauled to improve accessibility and visual flow, ensuring a more tranquil user experience.
+
 
