@@ -48,8 +48,10 @@ Next, we asked Heikki for a rotary encoder module. This a rotary button allowing
 * **Results**: Today we are working on the calibration of the PH sensor. We went on a hunt to buy some distilled water but could not find it. After inquiring in a pharmacy, we managed to buy some sterilised water that could work for our calibration. We also brought soda with us. The idea is to make a solution by adding a teaspoon of soda to 100ml of sterilised water in order to saturate it. This way we can be sure that our ph for this solution will 8.3 at 25 degrees. Next, we cleaned the sensor, worked on the wiring and adapted our code to display PH data. Then, we proceeded to submerge the ph sensor in our solution and waited for the measure to stabilise. The good news was that our code was working and the wiring was done properly. Unfortunately, the measurements varied widely: from a PH of 0.06 to 11.6, indicating that the sensor was broken and would not be able to provide accurate readings. We have seen with Heikki the possibility of buying a new PH sensor. We will have to wait to receive it but our code is already working so it should not take long when we get our delivery.
 We decided to adapt our code to create a page on our LCD screen allowing the user to select the kind of plant. Depending on the selection, the pot will advivce the user on how to take care of it. We also worked on building a website to get all our data on that page for better usability.
 
+## 🗓️ Monday, 2nd of February 2026
 
+* **Florent Gilliéron**: Worked on the layout of the pages for the LCD screen.
+* **Julien Mignon**: Updated the daily log. Worked on the web user interface.
+* **Léon Ehrwein**:
 
-
-
-
+* **Results**:
