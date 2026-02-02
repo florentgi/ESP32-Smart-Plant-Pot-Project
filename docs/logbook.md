@@ -69,9 +69,11 @@ We decided to adapt our code to create a page on our LCD screen allowing the use
 **Cosmetic Refinement**: UI elements were changed to improve accessibility and visual flow, ensuring a better user experience.
 
 **Cloud Part** : The idea is here is to store Data and the website in the cloud. Data is sent to the cloud from the ESP32. A react Website will collect them and display them on a nice dashboard. Given that it's a school project we can use free tiers. We have to make sure that the  ESP32 send JSON and is authentified to the database.
+Here is how the cloud part will be implemented
 * **Data Acquisition:** The ESP32 collects sensor data (Mood, Moisture, Light, Temp/CO2). We have to ensure that the esp32 data storage capicity comply the amount of data that we want to store
 * **Communication:** Data is formatted as JSON and sent via HTTPS REST to **Firebase Realtime Database**.
 * **Frontend:** A **React** dashboard (hosted on Azure Static Web Apps) listens to Firebase changes to display real-time metrics and historical charts.
+
 
 
 
