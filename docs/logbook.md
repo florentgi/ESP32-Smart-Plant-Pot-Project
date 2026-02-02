@@ -54,7 +54,7 @@ We decided to adapt our code to create a page on our LCD screen allowing the use
 * **Julien Mignon**: Updated the daily log. Worked on the web user interface.
 * **Léon Ehrwein**: Worked on cloud based solution with Azure.
 
-* **Results**: Today’s development focused on bridging real-time environmental data with a more intuitive user experience. Key updates include:
+* **Results**: Today’s development focused on connecting real-time environmental data with a more intuitive user experience. Key updates include:
 
 **Intelligent Environmental Logic**: We integrated local weather data to provide proactive care. The system now adjusts watering recommendations dynamically—for instance, increasing frequency during forecasted heatwaves.
 
@@ -67,6 +67,7 @@ We decided to adapt our code to create a page on our LCD screen allowing the use
 **LCD Display**: Added a dedicated "Analytics Screen" on the device hardware, displaying 24-hour Min/Max metrics for all sensors.
 
 **Cosmetic Refinement**: UI elements were changed to improve accessibility and visual flow, ensuring a better user experience.
+
 
 
 
