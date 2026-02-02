@@ -67,10 +67,10 @@ We decided to adapt our code to create a page on our LCD screen allowing the use
 **LCD Display**: Added a dedicated "Analytics Screen" on the device hardware, displaying 24-hour Min/Max metrics for all sensors.
 
 **Cosmetic Refinement**: UI elements were changed to improve accessibility and visual flow, ensuring a better user experience.
+**Data Acquisition:** The ESP32 collects sensor data (Mood, Moisture, Light, Temp/CO2). We have to ensure that the esp32 data storage capicity comply the amount of data that we want to store
+**Communication:** Data is formatted as JSON and sent via HTTPS REST to **Firebase Realtime Database**.
+**Frontend:** A **React** dashboard (hosted on Azure Static Web Apps) listens to Firebase changes to display real-time metrics and historical charts.
 
-* **Data Acquisition:** The ESP32 collects sensor data (Mood, Moisture, Light, Temp/CO2). We have to ensure that the esp32 data storage capicity comply the amount of data that we want to store
-* **Communication:** Data is formatted as JSON and sent via HTTPS REST to **Firebase Realtime Database**.
-* **Frontend:** A **React** dashboard (hosted on Azure Static Web Apps) listens to Firebase changes to display real-time metrics and historical charts.
 
 
 
