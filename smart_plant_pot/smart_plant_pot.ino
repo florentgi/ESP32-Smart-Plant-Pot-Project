@@ -4,18 +4,23 @@
 #include <SensirionI2cScd4x.h>
 #include <RotaryEncoder.h>
 
-// --- Hardware Settings ---
+// --- HARDWARE SETTINGS ---
 #define PIN_LIGHT 34        
 #define PIN_SOIL  35        
 // #define PIN_PH    33     // Disabled (Defective)
 #define PIN_WATER_SIGNAL 32 
 #define PIN_WATER_POWER  25 
 
-// --- ROTARY ENCODER ---
-#define PIN_IN1 27 
-#define PIN_IN2 26 
-#define PIN_BTN 14 
+// --- ROTARY ENCODER PINS ---
+#define PIN_IN1 27 // CLK
+#define PIN_IN2 26 // DT
+#define PIN_BTN 14 // SW
 
+// --- MEMORY SETTINGS ---
+#define HISTORY_INTERVAL 5000 // 600000 // 10 Minutes in ms
+#define MAX_HISTORY 144         // 24 hours (6 logs/hr * 24h)
+
+// --- OBJECTS ---
 LiquidCrystal_I2C lcd(0x27, 20, 4);
 SensirionI2cScd4x scd4x;
 RotaryEncoder encoder(PIN_IN1, PIN_IN2, RotaryEncoder::LatchMode::TWO03);
@@ -34,7 +39,6 @@ struct PlantProfile {
     float minLight; float maxLight;
 };
 
-// Edit your plants here
 PlantProfile plantDB[5] = {
     // Name      SoilMin SoilMax TempMin TempMax LightMin LightMax
     { "Generic", 20.0,   85.0,   10.0,   35.0,   0.0,     90.0 }, 
@@ -49,21 +53,58 @@ bool isEditingPlant = false;
 
 // --- STATES ---
 enum PlantMood { HAPPY, THIRSTY, OVERWATERED, EMPTY_TANK, SUNBURNT, COLD, TOO_DARK, HOT };
-enum Page { PAGE_EMOJI, PAGE_DATA, PAGE_PLANT }; 
+// UPDATED: Added PAGE_RECORDS
+enum Page { PAGE_EMOJI, PAGE_DATA, PAGE_PLANT, PAGE_RECORDS }; 
 
 struct PlantData {
     float soilMoisture; float waterLevel; float lightLevel; float pH;             
     float temperature; float airHumidity; uint16_t co2;         
 };
 
+// --- SMART POT CLASS ---
 class SmartPot {
 private:
     PlantData data;
     PlantMood currentMood;
 
+    PlantData history[MAX_HISTORY]; 
+    int historyIndex = 0;           
+    int historyCount = 0;           
+
 public:
     SmartPot() : currentMood(HAPPY) {
         data = {0, 0, 0, 7.0, 20.0, 50.0, 400};
+    }
+
+    // --- HISTORY LOGIC ---
+    void logHistory() {
+        history[historyIndex] = data; 
+        historyIndex++;
+        if (historyIndex >= MAX_HISTORY) historyIndex = 0; 
+        if (historyCount < MAX_HISTORY) historyCount++;
+        
+        Serial.print(">> LOG SAVED. Total Records: ");
+        Serial.println(historyCount);
+    }
+
+    PlantData getHistoryItem(int ago) {
+        int targetIndex = historyIndex - 1 - ago;
+        if (targetIndex < 0) targetIndex += MAX_HISTORY; 
+        return history[targetIndex];
+    }
+
+    void printHistory() {
+        Serial.println("\n====== 24H DATA HISTORY ======");
+        if (historyCount == 0) {
+            Serial.println("No records yet.");
+            return;
+        }
+        for (int i = 0; i < historyCount; i++) {
+            PlantData record = getHistoryItem(i);
+            Serial.printf("-%3d min | Soil: %.0f%% | Temp: %.1fC | Light: %.0f%%\n", 
+                          i * 10, record.soilMoisture, record.temperature, record.lightLevel);
+        }
+        Serial.println("==============================\n");
     }
 
     void updateSensors(float moisture, float water, float light, float ph, float temp, float hum, uint16_t co2Val) {
@@ -118,26 +159,19 @@ public:
         }
     }
 
-    // --- UPDATED PAGE 1: The Smart Gardener ---
+    // --- PAGE 1: EMOJI ---
     void drawPageEmoji() {
-        // 1. Updated Title
-        lcd.setCursor(0, 0); 
-        lcd.print(" The Smart Gardener "); 
-        
-        // Mood Face
+        lcd.setCursor(0, 0); lcd.print(" The Smart Gardener "); 
         lcd.setCursor(5, 1); lcd.print(getEmoji()); 
         lcd.setCursor(5, 2); lcd.print(getMoodText()); 
         
-        // 2. Updated Name Logic (Centered, No Label)
         String name = plantDB[selectedPlantIndex].name;
-        int centerPos = (20 - name.length()) / 2; // Math to center text
-        
-        lcd.setCursor(0, 3);
-        lcd.print("                    "); // Clear line first
-        lcd.setCursor(centerPos, 3); 
-        lcd.print(name);
+        int centerPos = (20 - name.length()) / 2;
+        lcd.setCursor(0, 3); lcd.print("                    "); 
+        lcd.setCursor(centerPos, 3); lcd.print(name);
     }
 
+    // --- PAGE 2: DASHBOARD ---
     void drawPageData() {
         char buffer[21]; 
         lcd.setCursor(0, 0);
@@ -154,9 +188,9 @@ public:
         lcd.print(buffer);
     }
 
+    // --- PAGE 3: PLANT SELECT ---
     void drawPageSelect() {
         lcd.setCursor(0, 0); lcd.print("--- SELECT PLANT ---");
-        
         if (isEditingPlant) {
             lcd.setCursor(0, 1); lcd.print("> "); 
             lcd.print(plantDB[selectedPlantIndex].name);
@@ -168,7 +202,6 @@ public:
             lcd.print("    ");
             lcd.setCursor(0, 3); lcd.print("[CLICK TO EDIT]     ");
         }
-
         lcd.setCursor(0, 2); 
         char buff[21];
         snprintf(buff, 21, "W:%2.0f-%2.0f%% T:%2.0f-%2.0fC", 
@@ -176,14 +209,55 @@ public:
             plantDB[selectedPlantIndex].minTemp, plantDB[selectedPlantIndex].maxTemp);
         lcd.print(buff);
     }
+
+    // --- PAGE 4: 24H RECORDS (NEW!) ---
+    void drawPageRecords() {
+        lcd.setCursor(0, 0); lcd.print("--- 24H RECORDS --- ");
+
+        // Handle case with no data
+        if (historyCount == 0) {
+            lcd.setCursor(0, 1); lcd.print(" collecting data... ");
+            lcd.setCursor(0, 2); lcd.print(" wait 10 mins...    ");
+            return;
+        }
+
+        // Calculate Min/Max for Temp and Humidity
+        PlantData first = getHistoryItem(0);
+        float minT = first.temperature; float maxT = first.temperature;
+        float minH = first.airHumidity; float maxH = first.airHumidity;
+
+        // Loop through valid history to find extremes
+        for(int i = 0; i < historyCount; i++) {
+            PlantData p = getHistoryItem(i);
+            if(p.temperature < minT) minT = p.temperature;
+            if(p.temperature > maxT) maxT = p.temperature;
+            if(p.airHumidity < minH) minH = p.airHumidity;
+            if(p.airHumidity > maxH) maxH = p.airHumidity;
+        }
+
+        // Draw Results
+        char buf[21];
+        lcd.setCursor(0, 1);
+        snprintf(buf, 21, "Temp:%2.0fC - %2.0fC    ", minT, maxT);
+        lcd.print(buf);
+
+        lcd.setCursor(0, 2);
+        snprintf(buf, 21, "Hum :%2.0f%% - %2.0f%%    ", minH, maxH);
+        lcd.print(buf);
+
+        lcd.setCursor(0, 3);
+        lcd.print("Samples: "); lcd.print(historyCount);
+    }
 };
 
+// --- GLOBALS ---
 SmartPot myPlant;
 Page currentPage = PAGE_EMOJI; 
 unsigned long lastUpdate = 0;
+unsigned long lastHistoryTime = 0; 
 const long interval = 2000;
 
-// --- SENSORS ---
+// --- SENSOR HELPERS ---
 float getLightPercentage() {
     return (analogRead(PIN_LIGHT) / 4095.0) * 100.0;
 }
@@ -217,11 +291,12 @@ void setup() {
 }
 
 void loop() {
+    // 1. INPUT HANDLING
     encoder.tick(); 
     int newPos = encoder.getPosition();
     static int lastPos = -1;
 
-    // --- BUTTON LOGIC ---
+    // Button Logic
     if (digitalRead(PIN_BTN) == LOW) {
         delay(200); 
         while(digitalRead(PIN_BTN) == LOW); 
@@ -233,28 +308,28 @@ void loop() {
         }
     }
 
-    // --- ROTATION LOGIC ---
+    // Rotation Logic
     if (lastPos != newPos) {
-        
         if (isEditingPlant) {
             if (newPos > lastPos) selectedPlantIndex++;
             else selectedPlantIndex--;
 
             if (selectedPlantIndex > 4) selectedPlantIndex = 0;
             if (selectedPlantIndex < 0) selectedPlantIndex = 4;
-
         } else {
-            int pageIndex = abs(newPos) % 3; 
+            // Page Logic (Now 0-3 for 4 pages)
+            int pageIndex = abs(newPos) % 4; 
             if (pageIndex == 0) currentPage = PAGE_EMOJI;
             else if (pageIndex == 1) currentPage = PAGE_DATA;
-            else currentPage = PAGE_PLANT;
+            else if (pageIndex == 2) currentPage = PAGE_PLANT;
+            else currentPage = PAGE_RECORDS;
         }
-        
         lcd.clear(); 
         lastUpdate = 0; 
         lastPos = newPos;
     }
 
+    // 2. PERIODIC UPDATE
     if (millis() - lastUpdate >= interval) {
         lastUpdate = millis();
 
@@ -274,6 +349,14 @@ void loop() {
         
         if (currentPage == PAGE_EMOJI) myPlant.drawPageEmoji();
         else if (currentPage == PAGE_DATA) myPlant.drawPageData();
-        else myPlant.drawPageSelect(); 
+        else if (currentPage == PAGE_PLANT) myPlant.drawPageSelect();
+        else myPlant.drawPageRecords(); // New Page!
+    }
+
+    // 3. HISTORY LOGGING
+    if (millis() - lastHistoryTime >= HISTORY_INTERVAL) {
+        lastHistoryTime = millis();
+        myPlant.logHistory();    
+        myPlant.printHistory();  
     }
 }
