@@ -74,12 +74,13 @@ Here is how the cloud part will be implemented
 * **Communication:** Data is formatted as JSON and sent via HTTPS REST to **Firebase Realtime Database**.
 * **Frontend:** A **React** dashboard (hosted on Azure Static Web Apps) listens to Firebase changes to display real-time metrics and historical charts.
 
+## 🗓️ Wednesday, 4th of February 2026
 
+* **Florent Gilliéron**: Working on sending data from the device to a cloud-based web server and retrieving them with our web app via an API.
+* **Julien Mignon**: Updated the daily log. Working on sending data from the device to a cloud-based web server and retrieving them with our web app via an API.
+* **Léon Ehrwein**: Working on sending data from the device to a cloud-based web server and retrieving them with our web app via an API.
 
-
-
-
-
+* **Results**: Today we are working on a way to send our data to a database in the cloud. We decided to use Firebase for our database and Azure for our cloud solution. We will also have to publish our web application online. Then, we will be able to retrieve all data via an API and display them on our web page. First, we had to work on the configuration code for firebase and add it to our repository. 
 
 
 
