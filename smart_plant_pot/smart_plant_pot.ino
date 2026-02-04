@@ -3,6 +3,11 @@
 #include <LiquidCrystal_I2C.h>
 #include <SensirionI2cScd4x.h>
 #include <RotaryEncoder.h>
+#include <WiFi.h>
+#include <Firebase_ESP_Client.h>
+#include <addons/TokenHelper.h>
+#include <addons/RTDBHelper.h>
+#include "../secrets.h"
 
 // =============================================================================
 // CONFIGURATION CONSTANTS
@@ -128,6 +133,52 @@ const byte FACE_BODY_R[8] PROGMEM        = {B00011, B00011, B00011, B00011, B000
 LiquidCrystal_I2C lcd(LCD_ADDRESS, LCD_COLS, LCD_ROWS);
 SensirionI2cScd4x scd4x;
 RotaryEncoder encoder(PIN_IN1, PIN_IN2, RotaryEncoder::LatchMode::TWO03);
+
+// Firebase Objects
+FirebaseData fbdo;
+FirebaseAuth auth;
+FirebaseConfig config;
+bool firebaseReady = false;
+
+// =============================================================================
+// WIFI & FIREBASE HELPER FUNCTIONS
+// =============================================================================
+
+void connectWiFi() {
+    Serial.print("Connecting to WiFi");
+    WiFi.begin(ssid, password);
+    int attempts = 0;
+    while (WiFi.status() != WL_CONNECTED && attempts < 20) {
+        delay(500);
+        Serial.print(".");
+        attempts++;
+    }
+    if (WiFi.status() == WL_CONNECTED) {
+        Serial.println("\nWiFi connected!");
+        Serial.print("IP: ");
+        Serial.println(WiFi.localIP());
+    } else {
+        Serial.println("\nWiFi connection failed!");
+    }
+}
+
+void initFirebase() {
+    config.api_key = FIREBASE_API_KEY;
+    config.database_url = FIREBASE_DATABASE_URL;
+    
+    // Anonymous authentication
+    auth.user.email = "";
+    auth.user.password = "";
+    
+    config.token_status_callback = tokenStatusCallback;
+    
+    Firebase.begin(&config, &auth);
+    Firebase.reconnectWiFi(true);
+    
+    fbdo.setResponseSize(4096);
+    firebaseReady = true;
+    Serial.println("Firebase initialized!");
+}
 
 // =============================================================================
 // ASSET MANAGER CLASS
@@ -298,6 +349,44 @@ public:
             Serial.printf("-%3d min | Soil: %.0f%% | Temp: %.1fC\n", i * 10, record.soilMoisture, record.temperature);
         }
         Serial.println("==============================\n");
+    }
+    
+    // --- Firebase Data Upload ---
+    bool sendToFirebase() {
+        if (!firebaseReady || WiFi.status() != WL_CONNECTED) {
+            Serial.println("Firebase not ready or WiFi disconnected");
+            return false;
+        }
+        
+        // Get plant name
+        PlantProfile profile;
+        memcpy_P(&profile, &PLANT_DB[getSelectedPlantIndex()], sizeof(PlantProfile));
+        
+        // Create JSON object
+        FirebaseJson json;
+        json.set("timestamp/.sv", "timestamp");  // Server timestamp
+        json.set("soilMoisture", currentData.soilMoisture);
+        json.set("waterLevel", currentData.waterLevel);
+        json.set("lightLevel", currentData.lightLevel);
+        json.set("pH", currentData.pH);
+        json.set("temperature", currentData.temperature);
+        json.set("airHumidity", currentData.airHumidity);
+        json.set("co2", currentData.co2);
+        json.set("plantType", profile.name);
+        json.set("mood", getMoodText());
+        
+        // Push to Firebase (creates unique ID for each reading)
+        String path = "/plant_readings";
+        if (Firebase.RTDB.pushJSON(&fbdo, path.c_str(), &json)) {
+            Serial.println(">> Data sent to Firebase successfully!");
+            Serial.print("   Path: ");
+            Serial.println(fbdo.dataPath());
+            return true;
+        } else {
+            Serial.print("Firebase error: ");
+            Serial.println(fbdo.errorReason());
+            return false;
+        }
     }
     
     // --- Sensor & Logic ---
@@ -496,6 +585,14 @@ void setup() {
     Wire.begin();
     lcd.init(); lcd.backlight(); lcd.clear();
     
+    // Show connecting message
+    LCDHelper::printCentered(1, "Connecting WiFi...");
+    connectWiFi();
+    
+    LCDHelper::printCentered(1, "Init Firebase...");
+    initFirebase();
+    
+    lcd.clear();
     assetManager.loadAssets(AssetType::FACE);
     
     scd4x.begin(Wire, 0x62); 
@@ -556,6 +653,8 @@ void loop() {
     
     if (millis() - lastHistoryLog >= HISTORY_LOG_INTERVAL) {
         lastHistoryLog = millis();
-        myPlant.logHistory(); myPlant.printHistory();
+        myPlant.logHistory(); 
+        myPlant.printHistory();
+        myPlant.sendToFirebase();  // Send to Firebase every 10 minutes
     }
 }
