@@ -4,10 +4,16 @@
 #include <SensirionI2cScd4x.h>
 #include <RotaryEncoder.h>
 #include <WiFi.h>
-#include <Firebase_ESP_Client.h>
+#include <FirebaseESP32.h>
 #include <addons/TokenHelper.h>
 #include <addons/RTDBHelper.h>
-#include "../secrets.h"
+
+// IMPORTANT: Ensure you have a secrets.h file, OR uncomment and fill these lines:
+// #define FIREBASE_API_KEY "YOUR_API_KEY"
+// #define FIREBASE_DATABASE_URL "YOUR_DB_URL"
+// #define WIFI_SSID "YOUR_WIFI_SSID"
+// #define WIFI_PASSWORD "YOUR_WIFI_PASSWORD"
+#include "../secrets.h" 
 
 // =============================================================================
 // CONFIGURATION CONSTANTS
@@ -29,7 +35,7 @@ constexpr uint8_t LCD_ROWS = 4;
 
 // Timing Constants
 constexpr unsigned long SENSOR_UPDATE_INTERVAL = 2000;      // 2 seconds
-constexpr unsigned long HISTORY_LOG_INTERVAL = 600000;      // 10 minutes
+constexpr unsigned long HISTORY_LOG_INTERVAL = 10000; //600000      // 10 minutes
 constexpr unsigned long DEBOUNCE_DELAY = 50;                // 50ms
 
 // History Settings
@@ -146,7 +152,8 @@ bool firebaseReady = false;
 
 void connectWiFi() {
     Serial.print("Connecting to WiFi");
-    WiFi.begin(ssid, password);
+    // Ensure these macros are defined in secrets.h or uncomment definition at top
+    WiFi.begin(WIFI_SSID, WIFI_PASSWORD);
     int attempts = 0;
     while (WiFi.status() != WL_CONNECTED && attempts < 20) {
         delay(500);
@@ -163,6 +170,7 @@ void connectWiFi() {
 }
 
 void initFirebase() {
+    // Ensure these macros are defined in secrets.h
     config.api_key = FIREBASE_API_KEY;
     config.database_url = FIREBASE_DATABASE_URL;
     
@@ -351,7 +359,7 @@ public:
         Serial.println("==============================\n");
     }
     
-    // --- Firebase Data Upload ---
+    // --- Firebase Data Upload (FIXED) ---
     bool sendToFirebase() {
         if (!firebaseReady || WiFi.status() != WL_CONNECTED) {
             Serial.println("Firebase not ready or WiFi disconnected");
@@ -377,7 +385,10 @@ public:
         
         // Push to Firebase (creates unique ID for each reading)
         String path = "/plant_readings";
-        if (Firebase.RTDB.pushJSON(&fbdo, path.c_str(), &json)) {
+        
+        // --- FIX IS HERE: Use Firebase.pushJSON instead of Firebase.RTDB.pushJSON ---
+        // Also removed the & address-of operators as the library expects references
+        if (Firebase.pushJSON(fbdo, path.c_str(), json)) {
             Serial.println(">> Data sent to Firebase successfully!");
             Serial.print("   Path: ");
             Serial.println(fbdo.dataPath());
@@ -437,18 +448,16 @@ public:
         // --- LEFT SIDE: TEXT INFO ---
         
         // Row 0: Plant Name
-        // We use %-16s to print the name and pad the rest with spaces to clear old text
         char buf[17]; 
         snprintf(buf, 17, "%-16s", profile.name); 
         lcd.setCursor(0, 0); 
         lcd.print(buf);
 
-        // Row 1 & 2: Clear the middle left area (Optional: could put Temp/Hum here later)
+        // Row 1 & 2: Clear the middle left area
         lcd.setCursor(0, 1); lcd.print("                ");
         lcd.setCursor(0, 2); lcd.print("                ");
 
         // Row 3: Status Message
-        // We also use %-16s to ensure "Happy" clears out "Refill Tank!"
         const char* status = getMoodText();
         snprintf(buf, 17, "%-16s", status);
         lcd.setCursor(0, 3); 
@@ -533,7 +542,7 @@ public:
         if (isEditing) {
             lcd.print("> "); lcd.print(profile.name); lcd.print(" <");
         } else {
-            lcd.print("  "); lcd.print(profile.name); lcd.print("    ");
+            lcd.print("  "); lcd.print(profile.name); lcd.print("     ");
         }
         
         char buf[LCD_COLS + 1];
@@ -541,7 +550,7 @@ public:
         snprintf(buf, sizeof(buf), "W:%2.0f-%2.0f%% T:%2.0f-%2.0fC", profile.minSoil, profile.maxSoil, profile.minTemp, profile.maxTemp);
         lcd.print(buf);
         lcd.setCursor(0, 3);
-        lcd.print(isEditing ? "[CLICK TO SAVE]     " : "[CLICK TO EDIT]     ");
+        lcd.print(isEditing ? "[CLICK TO SAVE]      " : "[CLICK TO EDIT]      ");
     }
     
 private:
@@ -582,6 +591,16 @@ unsigned long lastHistoryLog = 0;
 
 void setup() {
     Serial.begin(115200);
+
+    // --- DEBUGGING START ---
+    Serial.println("\n--- CHECKING SECRETS ---");
+    Serial.print("API KEY Length: "); 
+    Serial.println(String(FIREBASE_API_KEY).length()); 
+    
+    Serial.print("DB URL: "); 
+    Serial.println(FIREBASE_DATABASE_URL);
+    // --- DEBUGGING END ---
+    
     Wire.begin();
     lcd.init(); lcd.backlight(); lcd.clear();
     
