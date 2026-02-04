@@ -80,7 +80,8 @@ Here is how the cloud part will be implemented
 * **Julien Mignon**: Updated the daily log. Working on sending data from the device to a cloud-based web server and retrieving them with our web app via an API.
 * **Léon Ehrwein**: Working on sending data from the device to a cloud-based web server and retrieving them with our web app via an API.
 
-* **Results**: Today we are working on a way to send our data to a database in the cloud. We decided to use Firebase for our database and Azure for our cloud solution. We will also have to publish our web application online. Then, we will be able to retrieve all data via an API and display them on our web page. First, we had to work on the configuration code for firebase and add it to our repository. We ran into some issues to get our configuration to work when compiling the code on the Arduino IDE.
+* **Results**: Today we are working on a way to send our data to a database in the cloud. We decided to use Firebase for our database and Azure for our cloud solution. We will also have to publish our web application online. Then, we will be able to retrieve all data via an API and display them on our web page. First, we had to work on the configuration code for firebase and add it to our repository. We ran into some issues to get our configuration to work when compiling the code on the Arduino IDE. In the end we managed to get it to work and now we are able to send our data to firebase properly. Next time, we will have to work on the publication of our web site and retrieve the data to display them in our user interface.
+
 
 
 
