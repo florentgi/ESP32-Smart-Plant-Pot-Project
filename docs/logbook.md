@@ -88,8 +88,9 @@ Here is how the cloud part will be implemented
 * **Julien Mignon**: Updated the daily log. Publishing our webpage. Working on sending data from Firebase database to our webpage.
 * **Léon Ehrwein**: Publishing our webpage. Working on sending data from Firebase database to our webpage.
 
-* **Results**: Today, we are working on publishing our web page. That way, we should be able to send the data stored in the database and display them in our user interface. We are also looking into changing the emoji displayed on the first screen of our LCD. Currently, we have an emoji that does not work as intended. It does not convey the information well. The idea behind this emoji is to give the user a quick information related to the plant's health: a smilling emoji when everything is good, a sad face when something is wrong and the user needs to take action. We are now trying to implement a battery icon instead. It may be easier to code on the screen and should convey the information nicely.
+* **Results**: Our focus for today is deploying the web interface to enable real-time visualization of the data stored in our database. In parallel, we are refining the hardware's user interface. We found the original plant-status emoji to be ambiguous and difficult to interpret at a glance. To improve clarity, we are transitioning to a battery-style 'health bar' icon. This change simplifies the LCD coding process while providing users with a more intuitive diagnostic for their plant’s needs.
 We have made some research about the optimal level for soil moisture, water level, light exposure, CO2, ph and temperature for the top 5 most popular interior plants (Monstera Deliciosa, Snake Plant, Spider Plant, Peace Lily, Pothos).
 We're brainstorming a way to hide our electronics inside a custom 3D-printed outer pot. The design includes a hidden bottom tray for the ESP32 and breadboard, with a specific focus on shielding the soil sensor from water drips to ensure the hardware stays dry and functional.
+
 
 
