@@ -5,17 +5,14 @@
 #include <RotaryEncoder.h>
 #include <WiFi.h>
 #include <FirebaseESP32.h>
-
-// Helper to print token errors
 #include <addons/TokenHelper.h>
 #include <addons/RTDBHelper.h>
-
-// INCLUDE SECRETS
 #include "../secrets.h" 
 
 // =============================================================================
 // CONFIGURATION CONSTANTS
 // =============================================================================
+// Pins
 constexpr uint8_t PIN_LIGHT = 34;
 constexpr uint8_t PIN_SOIL = 35;
 constexpr uint8_t PIN_WATER_SIGNAL = 32;
@@ -24,36 +21,27 @@ constexpr uint8_t PIN_IN1 = 27;
 constexpr uint8_t PIN_IN2 = 26;
 constexpr uint8_t PIN_BTN = 14;
 
+// LCD
 constexpr uint8_t LCD_ADDRESS = 0x27;
 constexpr uint8_t LCD_COLS = 20;
 constexpr uint8_t LCD_ROWS = 4;
 
+// Settings
 constexpr unsigned long SENSOR_UPDATE_INTERVAL = 2000;      
-constexpr unsigned long HISTORY_LOG_INTERVAL = 10000; //600000     // 10 Mins
+constexpr unsigned long HISTORY_LOG_INTERVAL = 10000; //600000;      // 10 Mins (Upload)
 constexpr unsigned long DEBOUNCE_DELAY = 50;                
-
 constexpr uint8_t MAX_HISTORY = 144;  
-
 constexpr int SOIL_DRY_RAW = 2933;
 constexpr int SOIL_WET_RAW = 2019;
 constexpr int TANK_EMPTY_RAW = 0;
 constexpr int TANK_FULL_RAW = 1421;
 constexpr int ADC_MAX = 4095;
 
-constexpr float MIN_VALID_TEMP = -10.0f;
-constexpr float MAX_VALID_TEMP = 60.0f;
-constexpr float MIN_VALID_HUMIDITY = 0.0f;
-constexpr float MAX_VALID_HUMIDITY = 100.0f;
-constexpr uint16_t MIN_VALID_CO2 = 300;
-constexpr uint16_t MAX_VALID_CO2 = 5000;
-
-constexpr uint16_t DEFAULT_CO2 = 400;
-constexpr float DEFAULT_TEMP = 22.0f;
-constexpr float DEFAULT_HUMIDITY = 50.0f;
-constexpr float DEFAULT_PH = 7.0f;
-
+// Defaults
+constexpr uint16_t DEFAULT_CO2 = 400; constexpr float DEFAULT_TEMP = 22.0f; 
+constexpr float DEFAULT_HUMIDITY = 50.0f; constexpr float DEFAULT_PH = 7.0f;
 constexpr uint8_t GRAPH_HEIGHT = 16;  
-constexpr uint8_t GRAPH_UPPER_ROW = 1;
+constexpr uint8_t GRAPH_UPPER_ROW = 1; 
 constexpr uint8_t GRAPH_LOWER_ROW = 2;
 constexpr uint8_t PIXELS_PER_ROW = 8;
 
@@ -61,12 +49,15 @@ constexpr uint8_t PIXELS_PER_ROW = 8;
 // ENUMS & STRUCTURES
 // =============================================================================
 enum class PlantMood : uint8_t { HAPPY, THIRSTY, OVERWATERED, EMPTY_TANK, SUNBURNT, COLD, TOO_DARK, HOT };
-enum class Page : uint8_t { EMOJI = 0, DATA = 1, RECORDS = 2, GRAPH = 3, PLANT = 4, COUNT = 5 };
-enum class AssetType : uint8_t { FACE, GRAPH };
+enum class Page : uint8_t { HOME = 0, DATA = 1, RECORDS = 2, GRAPH = 3, PLANT = 4, COUNT = 5 };
+enum class AssetType : uint8_t { BATTERY, GRAPH };
 
 struct PlantProfile {
     const char* name;
-    float minSoil; float maxSoil; float minTemp; float maxTemp; float minLight; float maxLight;
+    float minSoil; float maxSoil;
+    float minTemp; float maxTemp;
+    float minLight; float maxLight;
+    const char* advice; // <-- NEW: Specific Recommendation
 };
 
 struct PlantData {
@@ -76,14 +67,16 @@ struct PlantData {
 };
 
 // =============================================================================
-// PLANT DATABASE
+// PLANT DATABASE (UPDATED WITH REAL DATA)
 // =============================================================================
+// Note: Lux converted to % (approx): 100fc=~20%, 400fc=~80%
 const PlantProfile PLANT_DB[] PROGMEM = {
-    {"Generic", 20.0f, 85.0f, 10.0f, 35.0f, 0.0f, 90.0f},
-    {"Cactus",  5.0f,  40.0f, 15.0f, 40.0f, 40.0f, 100.0f},
-    {"Fern",    50.0f, 90.0f, 18.0f, 28.0f, 10.0f, 60.0f},
-    {"Basil",   30.0f, 80.0f, 20.0f, 30.0f, 50.0f, 100.0f},
-    {"Orchid",  20.0f, 60.0f, 18.0f, 32.0f, 20.0f, 50.0f}
+    // Name              Soil(%)      Temp(C)      Light(%)     Recommendation
+    {"Monstera",         30.0, 80.0,  18.0, 29.0,  30.0, 90.0,  "Dry top 5cm"},
+    {"Snake Plant",      10.0, 50.0,  15.0, 29.0,  10.0, 60.0,  "Dry completely"},
+    {"Spider Plant",     40.0, 80.0,  15.0, 27.0,  25.0, 75.0,  "Keep moist"},
+    {"Peace Lily",       50.0, 90.0,  18.0, 27.0,  15.0, 65.0,  "Never dry out"},
+    {"Pothos",           25.0, 75.0,  15.0, 29.0,  20.0, 80.0,  "Dry top 3cm"}
 };
 constexpr uint8_t PLANT_DB_SIZE = sizeof(PLANT_DB) / sizeof(PLANT_DB[0]);
 
@@ -102,20 +95,14 @@ bool firebaseReady = false;
 // WIFI & FIREBASE HELPERS
 // =============================================================================
 void connectWiFi() {
-    Serial.print("\n[WiFi] Connecting to: ");
-    Serial.println(WIFI_SSID);
-    
+    Serial.print("\n[WiFi] Connecting to: "); Serial.println(WIFI_SSID);
     WiFi.begin(WIFI_SSID, WIFI_PASSWORD);
     int attempts = 0;
     while (WiFi.status() != WL_CONNECTED && attempts < 20) {
-        delay(500);
-        Serial.print(".");
-        attempts++;
+        delay(500); Serial.print("."); attempts++;
     }
     if (WiFi.status() == WL_CONNECTED) {
-        Serial.println("\n[WiFi] Connected!");
-        Serial.print("[WiFi] IP: "); Serial.println(WiFi.localIP());
-        Serial.print("[WiFi] Signal: "); Serial.println(WiFi.RSSI());
+        Serial.println("\n[WiFi] Connected! IP: " + WiFi.localIP().toString());
     } else {
         Serial.println("\n[WiFi] FAILED! Check credentials in secrets.h");
     }
@@ -123,61 +110,57 @@ void connectWiFi() {
 
 void initFirebase() {
     Serial.println("\n[Firebase] Initializing...");
-
     config.api_key = FIREBASE_API_KEY;
     config.database_url = FIREBASE_DATABASE_URL;
-
-    // Email/Password Auth ---
     auth.user.email = FIREBASE_USER_EMAIL;
     auth.user.password = FIREBASE_USER_PASSWORD;
-
-    // Assign the callback to print debug info
     config.token_status_callback = tokenStatusCallback; 
-    
-    // Critical fix for ESP32 memory stability
     fbdo.setBSSLBufferSize(4096, 1024);
     fbdo.setResponseSize(4096);
-
     Firebase.begin(&config, &auth);
     Firebase.reconnectWiFi(true);
-    
     firebaseReady = true;
-    Serial.println("[Firebase] Setup Complete. Connecting...");
+    Serial.println("[Firebase] Setup Complete.");
 }
 
 // =============================================================================
-// LCD ASSETS & SENSORS
+// ASSET MANAGER (GRAPHICS)
 // =============================================================================
 const byte BAR_CHARS[8][8] PROGMEM = { {0,0,0,0,0,0,0,0}, {0,0,0,0,0,0,0,31}, {0,0,0,0,0,0,31,31}, {0,0,0,0,0,31,31,31}, {0,0,0,0,31,31,31,31}, {0,0,0,31,31,31,31,31}, {0,0,31,31,31,31,31,31}, {31,31,31,31,31,31,31,31} };
-const byte FACE_EYE_OPEN[8] PROGMEM    = {B00111, B01111, B11111, B11111, B11111, B11111, B01111, B00111};
-const byte FACE_EYE_CLOSED[8] PROGMEM  = {B00000, B00000, B00000, B00000, B11111, B11111, B00000, B00000};
-const byte FACE_MOUTH_HAPPY_L[8] PROGMEM = {B00000, B00000, B10000, B11000, B11100, B01110, B00111, B00011};
-const byte FACE_MOUTH_HAPPY_R[8] PROGMEM = {B00000, B00000, B00001, B00011, B00111, B01110, B11100, B11000};
-const byte FACE_MOUTH_SAD_L[8] PROGMEM   = {B00011, B00111, B01110, B11100, B11000, B10000, B00000, B00000};
-const byte FACE_MOUTH_SAD_R[8] PROGMEM   = {B11000, B11100, B01110, B00111, B00011, B00001, B00000, B00000};
-const byte FACE_BODY_L[8] PROGMEM        = {B11000, B11000, B11000, B11000, B11000, B11000, B11000, B11000};
-const byte FACE_BODY_R[8] PROGMEM        = {B00011, B00011, B00011, B00011, B00011, B00011, B00011, B00011};
+
+// WIDE BATTERY ASSETS (2-COLUMN)
+// Top (L/R) Empty/Full
+const byte BAT_TL_E[8] PROGMEM = {B00011, B00011, B11111, B10000, B10000, B10000, B10000, B10000};
+const byte BAT_TR_E[8] PROGMEM = {B11000, B11000, B11111, B00001, B00001, B00001, B00001, B00001};
+const byte BAT_TL_F[8] PROGMEM = {B00011, B00011, B11111, B11111, B11111, B11111, B11111, B11111};
+const byte BAT_TR_F[8] PROGMEM = {B11000, B11000, B11111, B11111, B11111, B11111, B11111, B11111};
+// Mid (L/R) Empty (Full uses char 255)
+const byte BAT_ML_E[8] PROGMEM = {B10000, B10000, B10000, B10000, B10000, B10000, B10000, B10000};
+const byte BAT_MR_E[8] PROGMEM = {B00001, B00001, B00001, B00001, B00001, B00001, B00001, B00001};
+// Bot (L/R) Full (Always Full)
+const byte BAT_BL_F[8] PROGMEM = {B11111, B11111, B11111, B11111, B11111, B11111, B11111, B11111}; 
+const byte BAT_BR_F[8] PROGMEM = {B11111, B11111, B11111, B11111, B11111, B11111, B11111, B11111};
 
 class AssetManager {
 private: AssetType currentAsset;
 public:
-    AssetManager() : currentAsset(AssetType::FACE) {}
+    AssetManager() : currentAsset(AssetType::BATTERY) {}
     void loadAssets(AssetType type) {
         if (currentAsset == type) return; 
         currentAsset = type;
-        if (type == AssetType::FACE) loadFaceAssets(); else loadGraphAssets();
+        if (type == AssetType::BATTERY) loadBatteryAssets(); else loadGraphAssets();
     }
 private:
-    void loadFaceAssets() {
+    void loadBatteryAssets() {
         byte temp[8];
-        memcpy_P(temp, FACE_EYE_OPEN, 8); lcd.createChar(0, temp);
-        memcpy_P(temp, FACE_EYE_CLOSED, 8); lcd.createChar(1, temp);
-        memcpy_P(temp, FACE_MOUTH_HAPPY_L, 8); lcd.createChar(2, temp);
-        memcpy_P(temp, FACE_MOUTH_HAPPY_R, 8); lcd.createChar(3, temp);
-        memcpy_P(temp, FACE_MOUTH_SAD_L, 8); lcd.createChar(4, temp);
-        memcpy_P(temp, FACE_MOUTH_SAD_R, 8); lcd.createChar(5, temp);
-        memcpy_P(temp, FACE_BODY_L, 8); lcd.createChar(6, temp);
-        memcpy_P(temp, FACE_BODY_R, 8); lcd.createChar(7, temp);
+        memcpy_P(temp, BAT_TL_E, 8); lcd.createChar(0, temp);
+        memcpy_P(temp, BAT_TR_E, 8); lcd.createChar(1, temp);
+        memcpy_P(temp, BAT_TL_F, 8); lcd.createChar(2, temp);
+        memcpy_P(temp, BAT_TR_F, 8); lcd.createChar(3, temp);
+        memcpy_P(temp, BAT_ML_E, 8); lcd.createChar(4, temp);
+        memcpy_P(temp, BAT_MR_E, 8); lcd.createChar(5, temp);
+        memcpy_P(temp, BAT_BL_F, 8); lcd.createChar(6, temp);
+        memcpy_P(temp, BAT_BR_F, 8); lcd.createChar(7, temp);
     }
     void loadGraphAssets() {
         byte temp[8];
@@ -245,7 +228,6 @@ public:
         history[historyIndex] = currentData;
         historyIndex = (historyIndex + 1) % MAX_HISTORY;
         if (historyCount < MAX_HISTORY) historyCount++;
-        Serial.printf(">> LOG SAVED. Total Records: %d\n", historyCount);
     }
     
     PlantData getHistoryItem(uint8_t ago) const {
@@ -255,47 +237,24 @@ public:
     }
     
     void printHistory() const {
-        Serial.println("\n====== 24H DATA HISTORY ======");
-        for (uint8_t i = 0; i < historyCount; i++) {
-            PlantData r = getHistoryItem(i);
-            Serial.printf("-%3d min | Soil: %.0f%%\n", i * 10, r.soilMoisture);
-        }
-        Serial.println("==============================\n");
+        Serial.printf(">> Local Records: %d | Last Soil: %.0f%%\n", historyCount, currentData.soilMoisture);
     }
 
-    // --- FIREBASE DEBUGGING UPLOAD FUNCTION ---
+    // --- FIREBASE UPLOAD ---
     bool sendToFirebase() {
-        Serial.println("\n--- UPLOADING TO FIREBASE ---");
+        if (!firebaseReady || WiFi.status() != WL_CONNECTED) {
+            Serial.println("[Error] Cannot upload: No WiFi or Firebase."); return false;
+        }
 
-        // 1. Safety Checks
-        if (!firebaseReady) {
-            Serial.println("[Error] Firebase not initialized.");
-            return false;
-        }
-        if (WiFi.status() != WL_CONNECTED) {
-            Serial.println("[Error] WiFi disconnected.");
-            return false;
-        }
-        
-        // 2. Get Plant Identity
-        // We retrieve the name from the database based on which plant you selected on the LCD.
-        PlantProfile profile;
-        memcpy_P(&profile, &PLANT_DB[getSelectedPlantIndex()], sizeof(PlantProfile));
+        PlantProfile profile; memcpy_P(&profile, &PLANT_DB[selectedPlantIndex], sizeof(PlantProfile));
         String plantName = String(profile.name);
-        int plantID = getSelectedPlantIndex();
         
-        // 3. Prepare the JSON Packet
         FirebaseJson json;
+        json.set("timestamp/.sv", "timestamp");
+        json.set("plant_name", plantName);
+        json.set("plant_id", getSelectedPlantIndex());
+        json.set("status", getMoodText());
         
-        // --- IDENTITY & TIME ---
-        json.set("timestamp/.sv", "timestamp"); // Server-side Timestamp
-        json.set("plant_name", plantName);      // e.g., "Fern"
-        json.set("plant_id", plantID);          // e.g., 2
-        
-        // --- STATUS ---
-        json.set("status", getMoodText());      // e.g., "Happy", "Thirsty!"
-        
-        // --- SENSORS (The 7 Data Points) ---
         json.set("soil", currentData.soilMoisture);
         json.set("sun", currentData.lightLevel);
         json.set("temp", currentData.temperature);
@@ -304,21 +263,14 @@ public:
         json.set("ph", currentData.pH);
         json.set("hum", currentData.airHumidity);
         
-        // 4. Define the Path
-        // We group data by Plant Name. This creates a neat folder for each plant.
         String path = "/history/" + plantName;
+        Serial.print(">> Uploading to: "); Serial.println(path);
         
-        Serial.print(">> Target Path: "); Serial.println(path);
-        
-        // 5. Send Data
-        // pushJSON automatically creates a unique ID (like -Nky...) for this specific entry
         if (Firebase.pushJSON(fbdo, path.c_str(), json)) {
-            Serial.println(">> SUCCESS! Data saved to cloud.");
-            Serial.print(">> Database Path: "); Serial.println(fbdo.dataPath());
+            Serial.println(">> SUCCESS! Data saved.");
             return true;
         } else {
-            Serial.print(">> ERROR: ");
-            Serial.println(fbdo.errorReason());
+            Serial.print(">> ERROR: "); Serial.println(fbdo.errorReason());
             return false;
         }
     }
@@ -349,22 +301,33 @@ public:
             default: return "Unknown";
         }
     }
-    bool isHappy() const { return currentMood == PlantMood::HAPPY; }
 
-    void drawPageEmoji() const {
-        PlantProfile profile; memcpy_P(&profile, &PLANT_DB[selectedPlantIndex], sizeof(PlantProfile));
-        bool happy = isHappy();
-        char buf[17]; snprintf(buf, 17, "%-16s", profile.name); 
-        lcd.setCursor(0, 0); lcd.print(buf);
-        lcd.setCursor(0, 1); lcd.print("                ");
-        lcd.setCursor(0, 2); lcd.print("                ");
-        snprintf(buf, 17, "%-16s", getMoodText());
-        lcd.setCursor(0, 3); lcd.print(buf);
-        lcd.setCursor(17, 0); lcd.write(happy ? 0 : 1); lcd.setCursor(18, 0); lcd.write(happy ? 0 : 1);
-        lcd.setCursor(17, 1); lcd.write(6); lcd.setCursor(18, 1); lcd.write(7);
-        lcd.setCursor(17, 2); lcd.write(6); lcd.setCursor(18, 2); lcd.write(7);
-        lcd.setCursor(17, 3); lcd.write(happy ? 2 : 4); lcd.setCursor(18, 3); lcd.write(happy ? 3 : 5);
+    int getHealthLevel() const {
+        if (currentMood == PlantMood::HAPPY) return 3; // Full Health
+        if (currentMood == PlantMood::THIRSTY || currentMood == PlantMood::COLD || currentMood == PlantMood::HOT || currentMood == PlantMood::TOO_DARK) return 2; // Warning
+        return 1; // Critical
     }
+
+    // --- HOME SCREEN (BATTERY + TITLE) ---
+    void drawPageHome() const {
+        PlantProfile profile; memcpy_P(&profile, &PLANT_DB[selectedPlantIndex], sizeof(PlantProfile));
+        int health = getHealthLevel();
+        char buf[17]; 
+        
+        // TITLE
+        lcd.setCursor(0, 0); lcd.print("The Smart Gardener  "); 
+
+        // LEFT SIDE
+        snprintf(buf, 17, "%-16s", profile.name); lcd.setCursor(0, 1); lcd.print(buf);
+        snprintf(buf, 17, "%-16s", getMoodText()); lcd.setCursor(0, 2); lcd.print(buf);
+        snprintf(buf, 17, "Soil: %.0f%%       ", currentData.soilMoisture); lcd.setCursor(0, 3); lcd.print(buf);
+
+        // RIGHT SIDE: WIDE BATTERY
+        lcd.setCursor(18, 1); if(health >= 3) { lcd.write(2); lcd.write(3); } else { lcd.write(0); lcd.write(1); }
+        lcd.setCursor(18, 2); if(health >= 2) { lcd.write(255); lcd.write(255); } else { lcd.write(4); lcd.write(5); }
+        lcd.setCursor(18, 3); lcd.write(6); lcd.write(7); 
+    }
+
     void drawPageData() const {
         char buf[21];
         lcd.setCursor(0,0); snprintf(buf, 21, "Soil:%3.0f%%  H2O:%3.0f%%", currentData.soilMoisture, currentData.waterLevel); lcd.print(buf);
@@ -396,15 +359,28 @@ public:
             else{ lcd.setCursor(col,1); lcd.print(" "); lcd.setCursor(col,2); lcd.print(" "); }
         }
     }
+
+    // --- PLANT SELECT PAGE (WITH RECOMMENDATION) ---
     void drawPagePlant(bool isEditing) const {
         PlantProfile p; memcpy_P(&p, &PLANT_DB[selectedPlantIndex], sizeof(PlantProfile));
         lcd.setCursor(0,0); lcd.print("--- SELECT PLANT ---");
         LCDHelper::clearLine(1); lcd.setCursor(0,1);
+        
+        // Plant Name
         if(isEditing){ lcd.print("> "); lcd.print(p.name); lcd.print(" <"); }
         else{ lcd.print("  "); lcd.print(p.name); lcd.print("    "); }
-        char buf[21]; lcd.setCursor(0,2); snprintf(buf,21,"W:%2.0f-%2.0f T:%2.0f-%2.0f",p.minSoil,p.maxSoil,p.minTemp,p.maxTemp); lcd.print(buf);
-        lcd.setCursor(0,3); lcd.print(isEditing ? "[CLICK TO SAVE]     " : "[CLICK TO EDIT]     ");
+        
+        // Ranges
+        char buf[21]; lcd.setCursor(0,2); 
+        snprintf(buf,21,"S:%.0f-%.0f%% T:%.0f-%.0fC", p.minSoil, p.maxSoil, p.minTemp, p.maxTemp); 
+        lcd.print(buf);
+        
+        // Recommendation Text
+        lcd.setCursor(0,3); 
+        if(isEditing) lcd.print(p.advice); 
+        else lcd.print("[CLICK TO EDIT]     ");
     }
+
 private:
     void drawGraphColumn(uint8_t col, float val) const {
         int h = map(constrain((int)val,0,100),0,100,0,15);
@@ -417,12 +393,12 @@ private:
 uint8_t SmartPot::selectedPlantIndex = 0;
 
 // =============================================================================
-// GLOBAL STATE & MAIN LOOPS
+// MAIN LOOPS
 // =============================================================================
 SmartPot myPlant;
 AssetManager assetManager;
 ButtonHandler button(PIN_BTN);
-Page currentPage = Page::EMOJI;
+Page currentPage = Page::HOME;
 bool isEditingPlant = false;
 unsigned long lastSensorUpdate = 0;
 unsigned long lastHistoryLog = 0;
@@ -432,19 +408,17 @@ void setup() {
     Wire.begin();
     lcd.init(); lcd.backlight(); lcd.clear();
     
-    // DEBUG: CHECK SECRETS
-    Serial.println("\n--- DEBUG: Checking Config ---");
+    // Debug Secrets
+    Serial.println("\n--- DEBUG CONFIG ---");
     Serial.print("API KEY Len: "); Serial.println(String(FIREBASE_API_KEY).length());
     Serial.print("DB URL: "); Serial.println(FIREBASE_DATABASE_URL);
 
-    // Init Logic
-    assetManager.loadAssets(AssetType::FACE);
+    assetManager.loadAssets(AssetType::BATTERY);
     scd4x.begin(Wire, 0x62); scd4x.stopPeriodicMeasurement(); delay(500); scd4x.startPeriodicMeasurement();
     pinMode(PIN_LIGHT, INPUT); pinMode(PIN_SOIL, INPUT); pinMode(PIN_WATER_SIGNAL, INPUT); pinMode(PIN_WATER_POWER, OUTPUT);
     digitalWrite(PIN_WATER_POWER, LOW);
     button.begin();
     
-    // Connect
     LCDHelper::printCentered(1, "Connecting WiFi...");
     connectWiFi();
     LCDHelper::printCentered(1, "Init Firebase...");
@@ -467,7 +441,7 @@ void loop() {
             int p = abs(currentEncoderPos) % (int)Page::COUNT;
             Page newPage = static_cast<Page>(p);
             if(newPage == Page::GRAPH && currentPage != Page::GRAPH) assetManager.loadAssets(AssetType::GRAPH);
-            else if(newPage != Page::GRAPH && currentPage == Page::GRAPH) assetManager.loadAssets(AssetType::FACE);
+            else if(newPage != Page::GRAPH && currentPage == Page::GRAPH) assetManager.loadAssets(AssetType::BATTERY);
             currentPage = newPage;
         }
         lcd.clear(); lastSensorUpdate = 0; lastEncoderPos = currentEncoderPos;
@@ -481,7 +455,7 @@ void loop() {
         myPlant.updateSensors(s, w, l, DEFAULT_PH, t, h, c);
         
         switch (currentPage) {
-            case Page::EMOJI: myPlant.drawPageEmoji(); break;
+            case Page::HOME: myPlant.drawPageHome(); break;
             case Page::DATA: myPlant.drawPageData(); break;
             case Page::RECORDS: myPlant.drawPageRecords(); break;
             case Page::GRAPH: myPlant.drawPageGraph(); break;
@@ -493,6 +467,6 @@ void loop() {
         lastHistoryLog = millis();
         myPlant.logHistory(); 
         myPlant.printHistory();
-        myPlant.sendToFirebase(); // <--- This function now prints extensive debug info
+        myPlant.sendToFirebase();
     }
 }
