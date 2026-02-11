@@ -17,6 +17,7 @@ Instead of raw data streams, the device uses a State Machine to display the plan
   * Velleman VMA 303 Water Sensor (water level in internal water reservoir)
   * Light dection Module v2.0 (light exposure)
   * Freenove pH meter v1.1 (soil pH)
+  * ESP32-WROVER-E with integrated camera 
 * **Actuators:** 
 * **Other:** 
 
