@@ -95,7 +95,8 @@ We're brainstorming a way to hide our electronics inside a custom 3D-printed out
 ## 🗓️ Wednesday, 11th of February 2026
 
 * **Florent Gilliéron**: Working on the integration of the camera.
-* **Julien Mignon**: Updated the daily log. Working on the integration of the camera.
+* **Julien Mignon**: Updated the daily log. Working on the integration of the camera. Working on sketching design for inner pot.
 * **Léon Ehrwein**: Updating the user interface to integrate the local weather information.
 
-* **Results**: Today, we are working on installing an ESP32 with an integrated camera. We want to be able to take a photo of the growing plant every 24 hours and build a timelapse video to be displayed on our website. We need to look into wiring the device properly and find a way to send the photo to be stored in our firebase database. 
+* **Results**: Today, we are working on installing an ESP32 with an integrated camera. We want to be able to take a photo of the growing plant every 24 hours and build a timelapse video to be displayed on our website. We need to look into wiring the device properly and find a way to send the photo to be stored in our firebase database. We also worked on using 3D software to come up with a model to be printed for our inner pot.
+
