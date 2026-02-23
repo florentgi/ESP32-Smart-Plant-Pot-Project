@@ -100,3 +100,10 @@ We're brainstorming a way to hide our electronics inside a custom 3D-printed out
 
 * **Results**: Today, we are working on installing an ESP32 with an integrated camera. We want to be able to take a photo of the growing plant every 24 hours and build a timelapse video to be displayed on our website. We need to look into wiring the device properly and find a way to send the photo to be stored in our firebase database. We also worked on using 3D software to come up with a model to be printed for our inner pot.
 
+## 🗓️ Monday, 23rd of February 2026
+
+* **Florent Gilliéron**: Working on a way to send the photo taken by the camera to GitHub directly.
+* **Julien Mignon**: Updated the daily log. Working on a way to send the photo taken by the camera to GitHub directly.
+* **Léon Ehrwein**: Working on a way to send the photo taken by the camera to GitHub directly.
+
+* **Results**: Today, we are working on a solution to send a photo directly to our GitHub repository. This will be stored as a link. Then, our website should be able to retrieve the link to display the photo on the web page. First, we had to create some permissions to allow the camera to access our repository. In order to do so, we had to create a token in our code to allow the ESP32 with the camera to contact the GitHub API. 
