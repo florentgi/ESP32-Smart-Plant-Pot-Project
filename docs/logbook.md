@@ -106,4 +106,5 @@ We're brainstorming a way to hide our electronics inside a custom 3D-printed out
 * **Julien Mignon**: Updated the daily log. Working on a way to send the photo taken by the camera to GitHub directly.
 * **Léon Ehrwein**: Working on a way to send the photo taken by the camera to GitHub directly.
 
-* **Results**: Today, we are working on a solution to send a photo directly to our GitHub repository. This will be stored as a link. Then, our website should be able to retrieve the link to display the photo on the web page. First, we had to create some permissions to allow the camera to access our repository. In order to do so, we had to create a token in our code to allow the ESP32 with the camera to contact the GitHub API. 
+* **Results**: Today, we are working on a solution to send a photo directly to our GitHub repository. This will be stored as a link. Then, our website should be able to retrieve the link to display the photo on the web page. First, we had to create some permissions to allow the camera to access our repository. In order to do so, we had to create a token in our code to allow the ESP32 with the camera to contact the GitHub API. We also refined the 3D model for the inner pot, and we are planning to print the following week.
+
