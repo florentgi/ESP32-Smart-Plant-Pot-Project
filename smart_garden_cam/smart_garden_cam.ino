@@ -42,6 +42,9 @@ String uploadToGitHub();
 void saveLinkToFirebase(String url);
 void executePhotoRoutine();
 
+unsigned long lastFirebaseCheck = 0;
+const unsigned long FIREBASE_CHECK_INTERVAL = 5000; // Check every 5 seconds
+
 void setup() {
   Serial.begin(115200);
   WRITE_PERI_REG(RTC_CNTL_BROWN_OUT_REG, 0);
@@ -82,7 +85,7 @@ void setup() {
   configCam.fb_count = 1;
 
   if (esp_camera_init(&configCam) != ESP_OK) {
-    Serial.println("Camera Init Failed! Check power and camera ribbon cable.");
+    Serial.println("Camera Init Failed!");
     return;
   }
   Serial.println("Camera Init OK.");
@@ -95,25 +98,32 @@ void setup() {
   config.token_status_callback = tokenStatusCallback;
   Firebase.begin(&config, &auth);
   Firebase.reconnectWiFi(true);
-
-  // --- BOOT TEST TRIGGER ---
-  Serial.println("\n==================================");
-  Serial.println("STARTING INITIAL BOOT TEST IN 5s...");
-  Serial.println("==================================");
-  delay(5000); // Give you time to open the serial monitor
-  executePhotoRoutine();
+  
+  // Ensure the trigger is false on boot
+  Firebase.RTDB.setBool(&fbdo, "/camera/trigger", false);
+  Serial.println(">> Listening for Cloud Triggers...");
 }
 
-unsigned long lastTestTime = 0;
-const unsigned long TEST_INTERVAL = 60000; // 60 Seconds
-
 void loop() {
-  // --- TIMER TEST TRIGGER ---
-  // Takes a photo every 60 seconds automatically
-  if (millis() - lastTestTime >= TEST_INTERVAL) {
-    lastTestTime = millis();
-    Serial.println("\n>> TIMER TRIGGER! Snapping photo...");
-    executePhotoRoutine();
+  // Check Firebase every 5 seconds
+  if (millis() - lastFirebaseCheck >= FIREBASE_CHECK_INTERVAL) {
+    lastFirebaseCheck = millis();
+    
+    if (Firebase.ready()) {
+      if (Firebase.RTDB.getBool(&fbdo, "/camera/trigger")) {
+        bool shouldTrigger = fbdo.to<bool>();
+        
+        if (shouldTrigger) {
+          Serial.println("\n>> CLOUD COMMAND RECEIVED! Snapping photo...");
+          
+          executePhotoRoutine();
+          
+          // Reset the trigger back to false so it doesn't loop
+          Firebase.RTDB.setBool(&fbdo, "/camera/trigger", false);
+          Serial.println(">> Trigger reset to false. Waiting for next command.");
+        }
+      }
+    }
   }
 }
 
@@ -138,9 +148,7 @@ String uploadToGitHub() {
   size_t base64Len = ((fb->len + 2) / 3) * 4;
 
   unsigned char* base64Buf = (unsigned char*)ps_malloc(base64Len + 1);
-  if (!base64Buf) {
-    base64Buf = (unsigned char*)malloc(base64Len + 1);
-  }
+  if (!base64Buf) base64Buf = (unsigned char*)malloc(base64Len + 1);
 
   if (!base64Buf) {
     Serial.println("Memory Alloc Failed for Base64");
@@ -150,7 +158,6 @@ String uploadToGitHub() {
 
   mbedtls_base64_encode(base64Buf, base64Len + 1, &outputLen, fb->buf, fb->len);
   base64Buf[outputLen] = 0;
-
   esp_camera_fb_return(fb);
 
   WiFiClientSecure client;
@@ -159,11 +166,8 @@ String uploadToGitHub() {
   if (client.connect(githubHost, 443)) {
     Serial.println("Connected to GitHub... Uploading...");
 
-    // --- NEW: FOLDER STRUCTURE MODIFICATIONS ---
     String folderName = "plant_pictures";
     String fileName = "plant_" + String(millis()) + ".jpg";
-    
-    // Updated GitHub API Path to include the folder
     String path = "/repos/" + String(GITHUB_USER) + "/" + String(GITHUB_REPO) + "/contents/" + folderName + "/" + fileName;
 
     String jsonHead = "{\"message\":\"Daily Plant Photo\",\"content\":\"";
@@ -182,16 +186,11 @@ String uploadToGitHub() {
 
     int chunkSize = 1024;
     for (size_t i = 0; i < outputLen; i += chunkSize) {
-      if (i + chunkSize < outputLen) {
-        client.write(base64Buf + i, chunkSize);
-      } else {
-        client.write(base64Buf + i, outputLen - i);
-      }
+      if (i + chunkSize < outputLen) client.write(base64Buf + i, chunkSize);
+      else client.write(base64Buf + i, outputLen - i);
     }
 
     client.print(jsonTail);
-
-    Serial.println("Data sent! Waiting for GitHub response...");
 
     while (client.connected()) {
       String line = client.readStringUntil('\n');
@@ -202,15 +201,11 @@ String uploadToGitHub() {
     if (psramFound()) free(base64Buf); else free(base64Buf);
 
     if (response.indexOf("\"content\"") > 0) {
-      // --- NEW: RAW LINK MODIFIED TO INCLUDE FOLDER ---
       String rawLink = "https://raw.githubusercontent.com/" + String(GITHUB_USER) + "/" + String(GITHUB_REPO) + "/" + String(GITHUB_BRANCH) + "/" + folderName + "/" + fileName;
-      
-      Serial.println(">> GitHub Upload Success!");
-      Serial.println(">> Link: " + rawLink);
+      Serial.println(">> GitHub Upload Success: " + rawLink);
       return rawLink;
     } else {
-      Serial.println("GitHub Upload Failed. API Response:");
-      Serial.println(response);
+      Serial.println("GitHub Upload Failed. API Response: " + response);
       return "";
     }
   } else {
@@ -222,10 +217,7 @@ String uploadToGitHub() {
 }
 
 void saveLinkToFirebase(String url) {
-  if (!Firebase.ready()) {
-    Serial.println("Firebase is not ready yet!");
-    return;
-  }
+  if (!Firebase.ready()) return;
 
   FirebaseJson json;
   json.set("timestamp/.sv", "timestamp");
