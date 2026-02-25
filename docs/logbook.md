@@ -115,6 +115,7 @@ This error seems to indicate a hardware problem which is surprising as the ESP32
 * **Julien Mignon**: Updated the daily log. Worked on a new ESP32 with integrated camera.
 * **Léon Ehrwein**: Updated the diagram. Worked on a new ESP32 with integrated camera.
 
-* **Results**: Today, we asked Heikki for a new ESP32 with integrated camera. We want to see if the issue we had last Monday is hardware related or if it is a problem with our code. We found out that we had the same problem so the issue is coming from the code. We looked at the pin definition and we realised our mistake.
-
+* **Results**: Today, we coordinated with Heikki to acquire a replacement ESP32-CAM module to determine if the issues encountered last Monday were hardware-specific. After testing, the error persisted, confirming the fault was within our code. A review of the pin definitions revealed a configuration error; once we corrected the mapping, the camera successfully captured images and uploaded them to our GitHub repository.
+Later, we collaborated with Heikki on the inner pot design. Using Blender, we developed a streamlined 3D model optimized for a quick "proof of concept" demonstration. These components are scheduled for 3D printing by next week.
+Finally, we changed our hardware strategy regarding camera placement. Our initial plan (wiring the camera directly to the main ESP32 on the inner pot lid) presented significant focal length issues. The proximity would prevent the camera from capturing the entire plant as it grows. We have decided to make the camera an independent, modular unit, allowing users more flexibility in positioning for higher-quality photography.
 
