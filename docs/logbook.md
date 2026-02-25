@@ -115,5 +115,6 @@ This error seems to indicate a hardware problem which is surprising as the ESP32
 * **Julien Mignon**: Updated the daily log. Worked on a new ESP32 with integrated camera.
 * **Léon Ehrwein**: Updated the diagram. Worked on a new ESP32 with integrated camera.
 
-* **Results**: Today, we asked Heikki for a new ESP32 with integrated camera. We want to see if the issue we had last Monday is hardware related or if it is a problem with our code. 
+* **Results**: Today, we asked Heikki for a new ESP32 with integrated camera. We want to see if the issue we had last Monday is hardware related or if it is a problem with our code. We found out that we had the same problem so the issue is coming from the code. We looked at the pin definition and we realised our mistake.
+
 
