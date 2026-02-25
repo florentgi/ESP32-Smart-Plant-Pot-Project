@@ -111,8 +111,9 @@ This error seems to indicate a hardware problem which is surprising as the ESP32
 
 ## 🗓️ Wednesday, 11th of February 2026
 
-* **Florent Gilliéron**:
-* **Julien Mignon**: Updated the daily log.
-* **Léon Ehrwein**:
+* **Florent Gilliéron**: Worked on a new ESP32 with integrated camera.
+* **Julien Mignon**: Updated the daily log. Worked on a new ESP32 with integrated camera.
+* **Léon Ehrwein**: Updated the diagram. Worked on a new ESP32 with integrated camera.
 
-* **Results**:
+* **Results**: Today, we asked Heikki for a new ESP32 with integrated camera. We want to see if the issue we had last Monday is hardware related or if it is a problem with our code. 
+
