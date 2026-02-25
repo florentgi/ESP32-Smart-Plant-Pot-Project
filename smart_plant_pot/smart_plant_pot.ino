@@ -26,10 +26,13 @@ constexpr uint8_t LCD_ADDRESS = 0x27;
 constexpr uint8_t LCD_COLS = 20;
 constexpr uint8_t LCD_ROWS = 4;
 
-// Settings
+// Timing
 constexpr unsigned long SENSOR_UPDATE_INTERVAL = 2000;      
-constexpr unsigned long HISTORY_LOG_INTERVAL = 10000; //600000;      // 10 Mins (Upload)
+constexpr unsigned long HISTORY_LOG_INTERVAL = 600000;       // 10 Mins (Cloud Log)
+constexpr unsigned long PHOTO_INTERVAL = 86400000;           // 24 Hours (Camera Auto-Trigger)
 constexpr unsigned long DEBOUNCE_DELAY = 50;                
+
+// Settings
 constexpr uint8_t MAX_HISTORY = 144;  
 constexpr int SOIL_DRY_RAW = 2933;
 constexpr int SOIL_WET_RAW = 2019;
@@ -40,10 +43,6 @@ constexpr int ADC_MAX = 4095;
 // Defaults
 constexpr uint16_t DEFAULT_CO2 = 400; constexpr float DEFAULT_TEMP = 22.0f; 
 constexpr float DEFAULT_HUMIDITY = 50.0f; constexpr float DEFAULT_PH = 7.0f;
-constexpr uint8_t GRAPH_HEIGHT = 16;  
-constexpr uint8_t GRAPH_UPPER_ROW = 1; 
-constexpr uint8_t GRAPH_LOWER_ROW = 2;
-constexpr uint8_t PIXELS_PER_ROW = 8;
 
 // =============================================================================
 // ENUMS & STRUCTURES
@@ -57,7 +56,7 @@ struct PlantProfile {
     float minSoil; float maxSoil;
     float minTemp; float maxTemp;
     float minLight; float maxLight;
-    const char* advice; // <-- NEW: Specific Recommendation
+    const char* advice; 
 };
 
 struct PlantData {
@@ -67,16 +66,14 @@ struct PlantData {
 };
 
 // =============================================================================
-// PLANT DATABASE (UPDATED WITH REAL DATA)
+// PLANT DATABASE
 // =============================================================================
-// Note: Lux converted to % (approx): 100fc=~20%, 400fc=~80%
 const PlantProfile PLANT_DB[] PROGMEM = {
-    // Name              Soil(%)      Temp(C)      Light(%)     Recommendation
-    {"Monstera",         30.0, 80.0,  18.0, 29.0,  30.0, 90.0,  "Dry top 5cm"},
-    {"Snake Plant",      10.0, 50.0,  15.0, 29.0,  10.0, 60.0,  "Dry completely"},
-    {"Spider Plant",     40.0, 80.0,  15.0, 27.0,  25.0, 75.0,  "Keep moist"},
-    {"Peace Lily",       50.0, 90.0,  18.0, 27.0,  15.0, 65.0,  "Never dry out"},
-    {"Pothos",           25.0, 75.0,  15.0, 29.0,  20.0, 80.0,  "Dry top 3cm"}
+    {"Monstera",     30.0, 80.0,  18.0, 29.0,  30.0, 90.0,  "Dry top 5cm"},
+    {"Snake Plant",  10.0, 50.0,  15.0, 29.0,  10.0, 60.0,  "Dry completely"},
+    {"Spider Plant", 40.0, 80.0,  15.0, 27.0,  25.0, 75.0,  "Keep moist"},
+    {"Peace Lily",   50.0, 90.0,  18.0, 27.0,  15.0, 65.0,  "Never dry out"},
+    {"Pothos",       25.0, 75.0,  15.0, 29.0,  20.0, 80.0,  "Dry top 3cm"}
 };
 constexpr uint8_t PLANT_DB_SIZE = sizeof(PLANT_DB) / sizeof(PLANT_DB[0]);
 
@@ -92,7 +89,7 @@ FirebaseConfig config;
 bool firebaseReady = false;
 
 // =============================================================================
-// WIFI & FIREBASE HELPERS
+// HELPERS
 // =============================================================================
 void connectWiFi() {
     Serial.print("\n[WiFi] Connecting to: "); Serial.println(WIFI_SSID);
@@ -128,16 +125,13 @@ void initFirebase() {
 // =============================================================================
 const byte BAR_CHARS[8][8] PROGMEM = { {0,0,0,0,0,0,0,0}, {0,0,0,0,0,0,0,31}, {0,0,0,0,0,0,31,31}, {0,0,0,0,0,31,31,31}, {0,0,0,0,31,31,31,31}, {0,0,0,31,31,31,31,31}, {0,0,31,31,31,31,31,31}, {31,31,31,31,31,31,31,31} };
 
-// WIDE BATTERY ASSETS (2-COLUMN)
-// Top (L/R) Empty/Full
+// WIDE BATTERY ASSETS
 const byte BAT_TL_E[8] PROGMEM = {B00011, B00011, B11111, B10000, B10000, B10000, B10000, B10000};
 const byte BAT_TR_E[8] PROGMEM = {B11000, B11000, B11111, B00001, B00001, B00001, B00001, B00001};
 const byte BAT_TL_F[8] PROGMEM = {B00011, B00011, B11111, B11111, B11111, B11111, B11111, B11111};
 const byte BAT_TR_F[8] PROGMEM = {B11000, B11000, B11111, B11111, B11111, B11111, B11111, B11111};
-// Mid (L/R) Empty (Full uses char 255)
 const byte BAT_ML_E[8] PROGMEM = {B10000, B10000, B10000, B10000, B10000, B10000, B10000, B10000};
 const byte BAT_MR_E[8] PROGMEM = {B00001, B00001, B00001, B00001, B00001, B00001, B00001, B00001};
-// Bot (L/R) Full (Always Full)
 const byte BAT_BL_F[8] PROGMEM = {B11111, B11111, B11111, B11111, B11111, B11111, B11111, B11111}; 
 const byte BAT_BR_F[8] PROGMEM = {B11111, B11111, B11111, B11111, B11111, B11111, B11111, B11111};
 
@@ -314,15 +308,12 @@ public:
         int health = getHealthLevel();
         char buf[17]; 
         
-        // TITLE
         lcd.setCursor(0, 0); lcd.print("The Smart Gardener  "); 
 
-        // LEFT SIDE
         snprintf(buf, 17, "%-16s", profile.name); lcd.setCursor(0, 1); lcd.print(buf);
         snprintf(buf, 17, "%-16s", getMoodText()); lcd.setCursor(0, 2); lcd.print(buf);
         snprintf(buf, 17, "Soil: %.0f%%       ", currentData.soilMoisture); lcd.setCursor(0, 3); lcd.print(buf);
 
-        // RIGHT SIDE: WIDE BATTERY
         lcd.setCursor(18, 1); if(health >= 3) { lcd.write(2); lcd.write(3); } else { lcd.write(0); lcd.write(1); }
         lcd.setCursor(18, 2); if(health >= 2) { lcd.write(255); lcd.write(255); } else { lcd.write(4); lcd.write(5); }
         lcd.setCursor(18, 3); lcd.write(6); lcd.write(7); 
@@ -360,25 +351,16 @@ public:
         }
     }
 
-    // --- PLANT SELECT PAGE (WITH RECOMMENDATION) ---
     void drawPagePlant(bool isEditing) const {
         PlantProfile p; memcpy_P(&p, &PLANT_DB[selectedPlantIndex], sizeof(PlantProfile));
         lcd.setCursor(0,0); lcd.print("--- SELECT PLANT ---");
         LCDHelper::clearLine(1); lcd.setCursor(0,1);
-        
-        // Plant Name
         if(isEditing){ lcd.print("> "); lcd.print(p.name); lcd.print(" <"); }
         else{ lcd.print("  "); lcd.print(p.name); lcd.print("    "); }
-        
-        // Ranges
         char buf[21]; lcd.setCursor(0,2); 
         snprintf(buf,21,"S:%.0f-%.0f%% T:%.0f-%.0fC", p.minSoil, p.maxSoil, p.minTemp, p.maxTemp); 
         lcd.print(buf);
-        
-        // Recommendation Text
-        lcd.setCursor(0,3); 
-        if(isEditing) lcd.print(p.advice); 
-        else lcd.print("[CLICK TO EDIT]     ");
+        lcd.setCursor(0,3); if(isEditing) lcd.print(p.advice); else lcd.print("[CLICK TO EDIT]     ");
     }
 
 private:
@@ -402,6 +384,7 @@ Page currentPage = Page::HOME;
 bool isEditingPlant = false;
 unsigned long lastSensorUpdate = 0;
 unsigned long lastHistoryLog = 0;
+unsigned long lastPhotoTime = 0; 
 
 void setup() {
     Serial.begin(115200);
@@ -417,6 +400,9 @@ void setup() {
     scd4x.begin(Wire, 0x62); scd4x.stopPeriodicMeasurement(); delay(500); scd4x.startPeriodicMeasurement();
     pinMode(PIN_LIGHT, INPUT); pinMode(PIN_SOIL, INPUT); pinMode(PIN_WATER_SIGNAL, INPUT); pinMode(PIN_WATER_POWER, OUTPUT);
     digitalWrite(PIN_WATER_POWER, LOW);
+    
+    lastPhotoTime = millis(); // Initialize camera timer
+
     button.begin();
     
     LCDHelper::printCentered(1, "Connecting WiFi...");
@@ -430,10 +416,33 @@ void loop() {
     static int lastEncoderPos = 0;
     encoder.tick(); int currentEncoderPos = encoder.getPosition();
     
+    // --- UPDATED BUTTON LOGIC (WITH CLOUD TRIGGER) ---
     if (button.wasPressed()) {
-        if (currentPage == Page::PLANT) { isEditingPlant = !isEditingPlant; lcd.clear(); lastSensorUpdate = 0; }
+        if (currentPage == Page::PLANT) { 
+            isEditingPlant = !isEditingPlant; 
+            lcd.clear(); 
+            lastSensorUpdate = 0; 
+        } 
+        // Force Photo when on Home Screen
+        else if (currentPage == Page::HOME) {
+            Serial.println(">> CLOUD COMMAND: Triggering Camera...");
+            
+            // Visual Feedback
+            lcd.setCursor(0,0); lcd.print(">> SAY CHEESE! <<   ");
+            
+            // --- NEW: Trigger Camera via Firebase ---
+            if (Firebase.setBool(fbdo, "/camera/trigger", true)) {
+                Serial.println(">> Trigger sent to cloud!");
+            } else {
+                Serial.println(">> Failed to send trigger. Error: " + fbdo.errorReason());
+            }
+            
+            delay(2000); // Wait a bit for feedback to be read
+            lcd.clear(); lastSensorUpdate = 0; // Refresh screen
+        }
     }
     
+    // --- ENCODER LOGIC ---
     if (currentEncoderPos != lastEncoderPos) {
         if (isEditingPlant) {
             if (currentEncoderPos > lastEncoderPos) SmartPot::selectNextPlant(); else SmartPot::selectPreviousPlant();
@@ -447,6 +456,7 @@ void loop() {
         lcd.clear(); lastSensorUpdate = 0; lastEncoderPos = currentEncoderPos;
     }
     
+    // --- SENSOR UPDATES ---
     if (millis() - lastSensorUpdate >= SENSOR_UPDATE_INTERVAL) {
         lastSensorUpdate = millis();
         float l = SensorManager::getLightPercentage(); float s = SensorManager::getSoilMoisture(); float w = SensorManager::getWaterLevel();
@@ -463,10 +473,20 @@ void loop() {
         }
     }
     
+    // --- FIREBASE LOGGING ---
     if (millis() - lastHistoryLog >= HISTORY_LOG_INTERVAL) {
         lastHistoryLog = millis();
         myPlant.logHistory(); 
         myPlant.printHistory();
         myPlant.sendToFirebase();
+    }
+
+    // --- AUTO CAMERA CLOUD TRIGGER (24 HOURS) ---
+    if (millis() - lastPhotoTime >= PHOTO_INTERVAL) {
+        lastPhotoTime = millis();
+        Serial.println(">> AUTO CLOUD COMMAND: Daily Photo...");
+        
+        // --- NEW: Send auto-trigger to Firebase ---
+        Firebase.setBool(fbdo, "/camera/trigger", true);
     }
 }
