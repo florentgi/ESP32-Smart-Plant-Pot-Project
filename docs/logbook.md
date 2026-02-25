@@ -109,7 +109,7 @@ We're brainstorming a way to hide our electronics inside a custom 3D-printed out
 * **Results**: Today, we are working on a solution to send a photo directly to our GitHub repository. This will be stored as a link. Then, our website should be able to retrieve the link to display the photo on the web page. First, we had to create some permissions to allow the camera to access our repository. In order to do so, we had to create a token in our code to allow the ESP32 with the camera to contact the GitHub API. We also refined the 3D model for the inner pot, and we are planning to print it the following week. We faced a few issues with the integrated camera. At the moment, we are getting an error where the camera is not being recognized and therefore cannot take a photo. We spent the rest of the session trying to debug the problem but it was not successful. "E (1631) camera: Detected camera not supported. E (1631) camera: Camera probe failed with error 0x106(ESP_ERR_NOT_SUPPORTED) Camera Init Failed! Check power and camera ribbon cable."
 This error seems to indicate a hardware problem which is surprising as the ESP32 with integrated camera was brand new when it was given to us. Next session, we will ask Heikki for an other one and try to figure out what the problem is.
 
-## 🗓️ Wednesday, 11th of February 2026
+## 🗓️ Wednesday, 25th of February 2026
 
 * **Florent Gilliéron**: Worked on a new ESP32 with integrated camera.
 * **Julien Mignon**: Updated the daily log. Worked on a new ESP32 with integrated camera.
@@ -118,5 +118,6 @@ This error seems to indicate a hardware problem which is surprising as the ESP32
 * **Results**: Today, we asked Heikki to get a replacement ESP32-CAM module to determine if the issues encountered last Monday were hardware-specific. After testing, the error persisted, confirming that the fault was within our code. A review of the pin definitions showed a configuration error. Once we corrected the mapping, the camera successfully captured images and uploaded them to our GitHub repository.
 Later, we worked with Heikki on the inner pot design. Using Blender, we developed a 3D model optimized for a quick "proof of concept" demonstration. These components are scheduled for 3D printing by next week.
 Finally, we changed our hardware strategy regarding camera placement. Our initial plan (wiring the camera directly to the main ESP32 on the inner pot lid) presented significant focal length issues. The proximity would prevent the camera from capturing the entire plant as it grows. We have decided to make the camera an independent modular unit allowing users more flexibility in positioning for higher-quality photography.
+
 
 
