@@ -106,10 +106,13 @@ We're brainstorming a way to hide our electronics inside a custom 3D-printed out
 * **Julien Mignon**: Updated the daily log. Working on a way to send the photo taken by the camera to GitHub directly.
 * **Léon Ehrwein**: Working on a way to send the photo taken by the camera to GitHub directly.
 
-* **Results**: Today, we are working on a solution to send a photo directly to our GitHub repository. This will be stored as a link. Then, our website should be able to retrieve the link to display the photo on the web page. First, we had to create some permissions to allow the camera to access our repository. In order to do so, we had to create a token in our code to allow the ESP32 with the camera to contact the GitHub API. We also refined the 3D model for the inner pot, and we are planning to print the following week. We faced a few issues with the integrated camera. At the moment, we are getting an error where the camera is not being recognized and therefore cannot take a photo. We spent the rest of the session trying to debug the problem but it was not successful. "E (1631) camera: Detected camera not supported. E (1631) camera: Camera probe failed with error 0x106(ESP_ERR_NOT_SUPPORTED) Camera Init Failed! Check power and camera ribbon cable."
+* **Results**: Today, we are working on a solution to send a photo directly to our GitHub repository. This will be stored as a link. Then, our website should be able to retrieve the link to display the photo on the web page. First, we had to create some permissions to allow the camera to access our repository. In order to do so, we had to create a token in our code to allow the ESP32 with the camera to contact the GitHub API. We also refined the 3D model for the inner pot, and we are planning to print it the following week. We faced a few issues with the integrated camera. At the moment, we are getting an error where the camera is not being recognized and therefore cannot take a photo. We spent the rest of the session trying to debug the problem but it was not successful. "E (1631) camera: Detected camera not supported. E (1631) camera: Camera probe failed with error 0x106(ESP_ERR_NOT_SUPPORTED) Camera Init Failed! Check power and camera ribbon cable."
 This error seems to indicate a hardware problem which is surprising as the ESP32 with integrated camera was brand new when it was given to us. Next session, we will ask Heikki for an other one and try to figure out what the problem is.
 
+## 🗓️ Wednesday, 11th of February 2026
 
+* **Florent Gilliéron**:
+* **Julien Mignon**: Updated the daily log.
+* **Léon Ehrwein**:
 
-
-
+* **Results**:
