@@ -119,5 +119,10 @@ This error seems to indicate a hardware problem which is surprising as the ESP32
 Later, we worked with Heikki on the inner pot design. Using Blender, we developed a 3D model optimized for a quick "proof of concept" demonstration. These components are scheduled for 3D printing by next week.
 Finally, we changed our hardware strategy regarding camera placement. Our initial plan (wiring the camera directly to the main ESP32 on the inner pot lid) presented significant focal length issues. The proximity would prevent the camera from capturing the entire plant as it grows. We have decided to make the camera an independent modular unit allowing users more flexibility in positioning for higher-quality photography.
 
+## 🗓️ Monday, 2nd of March 2026
 
+* **Florent Gilliéron**:
+* **Julien Mignon**: Updated the daily log.
+* **Léon Ehrwein**:
 
+* **Results**:
