@@ -121,8 +121,9 @@ Finally, we changed our hardware strategy regarding camera placement. Our initia
 
 ## 🗓️ Monday, 2nd of March 2026
 
-* **Florent Gilliéron**:
-* **Julien Mignon**: Updated the daily log.
-* **Léon Ehrwein**:
+* **Florent Gilliéron**: Working on sending the photos link from our GitHub repo to the Firebase database.
+* **Julien Mignon**: Updated the daily log. Working on sending the photos link from our GitHub repo to the Firebase database.
+* **Léon Ehrwein**: Working on sending the photos link from our GitHub repo to the Firebase database.
 
 * **Results**:
+
