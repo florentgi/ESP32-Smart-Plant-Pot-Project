@@ -127,4 +127,10 @@ Finally, we changed our hardware strategy regarding camera placement. Our initia
 
 * **Results**: Today, we are working to move our photos automatically from GitHub to Firebase. Once a photo is moved, we save its new web link in our database. This lets our website grab those links instantly so the timelapse video can play smoothly for everyone to see. In order to do so, we’re updating our code so the website can automatically pull the image links. On the hardware side, the first 3D-printed parts for the inner pot are finished. We’ll print the rest by the next session so we can assemble the pot and start hiding all the electronics inside. On Wednesday, the wiring will have to be redone to clean it up and make it more organized.
 
+## 🗓️ Wednesday, 4th of March 2026
 
+* **Florent Gilliéron**: Working on the assemblage of the inner pot.
+* **Julien Mignon**: Updated the daily log. Working on the assemblage of the inner pot.
+* **Léon Ehrwein**: Working on the assemblage of the inner pot.
+
+* **Results**: Today’s focus is on assembling the 3D-printed components. We are also constructing a custom base to elevate the pot, providing a concealed compartment for the breadboard, ESP32, and associated wiring. Additionally, we plan to redo the wiring to ensure a cleaner, more organized layout.
