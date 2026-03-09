@@ -137,8 +137,9 @@ Finally, we changed our hardware strategy regarding camera placement. Our initia
 
 ## 🗓️ Monday, 9th of March 2026
 
-* **Florent Gilliéron**:
+* **Florent Gilliéron**: Worked on re wiring the electronics.
 * **Julien Mignon**: Updated the daily log. Working on re wiring the electronics
-* **Léon Ehrwein**:
+* **Léon Ehrwein**: Worked on re wiring the electronics.
 
-* **Results**:
+* **Results**: Today, we spent the whole session trying to debug the wiring.
+
