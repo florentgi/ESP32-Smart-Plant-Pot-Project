@@ -134,3 +134,11 @@ Finally, we changed our hardware strategy regarding camera placement. Our initia
 * **Léon Ehrwein**: Working on the assemblage of the inner pot.
 
 * **Results**: Today’s focus is on assembling the 3D-printed components. We are also constructing a custom base to elevate the pot, providing a concealed compartment for the breadboard, ESP32, and associated wiring. Additionally, we plan to redo the wiring to ensure a cleaner, more organized layout.
+
+## 🗓️ Monday, 9th of March 2026
+
+* **Florent Gilliéron**:
+* **Julien Mignon**: Updated the daily log. Working on re wiring the electronics
+* **Léon Ehrwein**:
+
+* **Results**:
