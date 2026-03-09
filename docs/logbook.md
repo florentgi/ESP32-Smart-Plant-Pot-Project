@@ -141,5 +141,6 @@ Finally, we changed our hardware strategy regarding camera placement. Our initia
 * **Julien Mignon**: Updated the daily log. Working on re wiring the electronics
 * **Léon Ehrwein**: Worked on re wiring the electronics.
 
-* **Results**: Today, we spent the whole session trying to debug the wiring.
+* **Results**: Today, we spent the whole session trying to debug the wiring. One wire was connected to the wrong pin so now that it is fixed, everything is working as intended.
+
 
