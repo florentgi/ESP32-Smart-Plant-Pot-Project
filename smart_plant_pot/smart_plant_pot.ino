@@ -28,7 +28,7 @@ constexpr uint8_t LCD_ROWS = 4;
 
 // Timing
 constexpr unsigned long SENSOR_UPDATE_INTERVAL = 2000;      
-constexpr unsigned long HISTORY_LOG_INTERVAL = 600000;       // 10 Mins (Cloud Log)
+constexpr unsigned long HISTORY_LOG_INTERVAL = 60000; // 600000;       // 10 Mins (Cloud Log)
 constexpr unsigned long PHOTO_INTERVAL = 86400000;           // 24 Hours (Camera Auto-Trigger)
 constexpr unsigned long DEBOUNCE_DELAY = 50;                
 
@@ -70,9 +70,9 @@ struct PlantData {
 // =============================================================================
 const PlantProfile PLANT_DB[] PROGMEM = {
     {"Monstera",     30.0, 80.0,  18.0, 29.0,  30.0, 90.0,  "Dry top 5cm"},
-    {"Snake Plant",  10.0, 50.0,  15.0, 29.0,  10.0, 60.0,  "Dry completely"},
-    {"Spider Plant", 40.0, 80.0,  15.0, 27.0,  25.0, 75.0,  "Keep moist"},
-    {"Peace Lily",   50.0, 90.0,  18.0, 27.0,  15.0, 65.0,  "Never dry out"},
+    {"Snake-Plant",  10.0, 50.0,  15.0, 29.0,  10.0, 60.0,  "Dry completely"},
+    {"Spider-Plant", 40.0, 80.0,  15.0, 27.0,  25.0, 75.0,  "Keep moist"},
+    {"Peace-Lily",   50.0, 90.0,  18.0, 27.0,  15.0, 65.0,  "Never dry out"},
     {"Pothos",       25.0, 75.0,  15.0, 29.0,  20.0, 80.0,  "Dry top 3cm"}
 };
 constexpr uint8_t PLANT_DB_SIZE = sizeof(PLANT_DB) / sizeof(PLANT_DB[0]);
