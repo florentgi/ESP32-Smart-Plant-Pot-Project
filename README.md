@@ -100,14 +100,5 @@ Enhanced Gallery: Improving the ESP32-CAM positioning and creating a smoother ti
 
 Expanded Library: Adding more plant species and detailed horticultural data to the database.
 
-## 📂 Repository Structure
-
-/firmware: Arduino sketches for the ESP32 and ESP32-CAM.
-
-/dashboard: React + TypeScript source code.
-
-/3d-models: .stl and Blender files for the pot enclosure.
-
-/assets: Project images and documentation.
 
 Created for the IoT Experimental Project at Haaga-Helia university of applied science.
