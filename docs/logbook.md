@@ -143,4 +143,10 @@ Finally, we changed our hardware strategy regarding camera placement. Our initia
 
 * **Results**: Today, we spent the whole session trying to debug the wiring. One wire was connected to the wrong pin so now that it is fixed, everything is working as intended.
 
+## 🗓️ Wednesday, 11th of March 2026
 
+* **Florent Gilliéron**: Presented a demonstration of our product.
+* **Julien Mignon**: Updated the daily log. Presented a demonstration of our product.
+* **Léon Ehrwein**: Presented a demonstration of our product.
+
+* **Results**: Today, we had a demonstration of our working product and updated the repository. We also spent some time to finish the report that needs to be submitted.
