@@ -1,8 +1,8 @@
-The Smart Gardener – A Connected Plant Pot 🪴
+# The Smart Gardener – A Connected Plant Pot 🪴
 
 The Smart Gardener is a fully integrated IoT solution designed to monitor and maintain plant health. Developed as part of the IoT Experimental Project (DIG008AS3AE-3004), this project bridges the gap between hardware sensors and a modern web dashboard, providing real-time insights into your plant's environment and mood.
 
-👥 The Team
+## 👥 The Team
 
 Florent Gilliéron – Firmware, Web Development & Electronics
 
@@ -10,11 +10,11 @@ Julien Mignon – Firmware, Web Development & Electronics
 
 Léon Ehrwein – Electronics, 3D Modeling & Design
 
-🚀 Overview
+## 🚀 Overview
 
 The Smart Gardener isn't just a sensor; it’s a complete end-to-end IoT ecosystem. By combining environmental data with specific plant profiles, the system determines the "mood" of your plant and provides actionable data via a local LCD interface and a remote web dashboard.
 
-Key Features
+## Key Features
 
 Multi-Sensor Monitoring: Tracks soil moisture, light levels, CO2, temperature, and humidity.
 
@@ -30,7 +30,7 @@ Timelapse Photography: An integrated ESP32-CAM module captures daily photos, upl
 
 Custom Enclosure: A 3D-printed outer pot designed in Blender to house all electronics safely.
 
-🛠️ Tech Stack
+## 🛠️ Tech Stack
 
 Hardware
 
@@ -60,7 +60,7 @@ APIs: GitHub API (Image Hosting), FMI API (Weather Data)
 
 Design: Blender (3D Printing)
 
-🏗️ Implementation Details
+## 🏗️ Implementation Details
 
 Sensor Calibration & Logic
 
@@ -80,7 +80,7 @@ Note: Below are screenshots of the web dashboard in action.
 
 (Insert your dashboard images here)
 
-📈 Outcome & Learning
+## 📈 Outcome & Learning
 
 This project was a journey from zero electronics experience to a functional full-stack IoT system. Key takeaways included:
 
@@ -90,7 +90,7 @@ System Architecture: Structuring C++ code with state machines to handle multiple
 
 Problem Solving: Learning the "patience of the wire"—spending hours debugging a single misplaced connection to finally achieve a working system.
 
-🔮 Future Roadmap
+## 🔮 Future Roadmap
 
 Automated Irrigation: Adding a water pump for self-watering capabilities.
 
@@ -100,7 +100,7 @@ Enhanced Gallery: Improving the ESP32-CAM positioning and creating a smoother ti
 
 Expanded Library: Adding more plant species and detailed horticultural data to the database.
 
-📂 Repository Structure
+## 📂 Repository Structure
 
 /firmware: Arduino sketches for the ESP32 and ESP32-CAM.
 
