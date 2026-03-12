@@ -78,7 +78,8 @@ Weather Integration: Real-time data from the Finnish Meteorological Institute (F
 
 Note: Below are screenshots of the web dashboard in action.
 
-(Insert your dashboard images here)
+<img width="778" height="418" alt="image" src="https://github.com/user-attachments/assets/96a0f788-ceea-4378-8625-bebf591c63e9" />
+
 
 ## 📈 Outcome & Learning
 
